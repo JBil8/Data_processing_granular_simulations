@@ -80,7 +80,7 @@ class DataProcessor:
     #compute the height of the box from the maximum y coordinate of the particles
     def compute_box_height(self):
         self.box_height = np.max(self.coor[:,1])-np.min(self.coor[:,1])
-
+        
     #Calculation of nematic order parameter
     def compute_S2(self, store_heads = None):
         starting_vector = np.array([0,0,1])
