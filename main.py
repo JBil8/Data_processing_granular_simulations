@@ -7,8 +7,9 @@ import os
 import re
 import multiprocessing
 import time as tm
-import DataProcessor 
+from DataProcessor import DataProcessor 
 from DataReader import DataReader
+from DataPlotter import DataPlotter
 
 if __name__ == "__main__":
 
@@ -22,9 +23,20 @@ if __name__ == "__main__":
     n_param = len(cof_list)*len(ap_list)*len(I_list)
     num_processes = 8
 
-    data1 = DataReader(cof_list[0], ap_list[0], I_list[0])
-    data1.read_data(global_path, 'shear_ellipsoids_')
+    data_read = DataReader(cof_list[0], ap_list[0], I_list[0])
+    data_read.set_number_wall_atoms(1062)
+    data_read.read_data(global_path, 'shear_ellipsoids_')
+    to_process = DataProcessor(data_read)
+    seq = to_process.process_data(4)
+    plotting = DataPlotter(seq)
+    plotting.plot_data()
+    
 
+    #eulerian = processed.eulerian_velocity(10)
+    #trajectory = processed.compute_single_particle_trajectory(10, 2)
+    #averages = processed.process_data()
+    #print(eulerian)
+    #print(trajectory)
     # param_averages = np.zeros((300, 10, len(I_list), len(ap_list)))
     # for id2, ap in enumerate(ap_list):
     #     for id1, I in enumerate(I_list):
