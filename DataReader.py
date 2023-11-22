@@ -2,21 +2,31 @@ import os
 import re
 import numpy as np
 import vtk 
+from abc import ABC, abstractmethod
 
 class DataReader:
-    def __init__(self, cof, ap, I):
+    def __init__(self, cof, ap, parameter, value):
+        """
+        Specify the parameters that vary in the parametric study
+        cof: coefficient of friction
+        ap: aspect ratio
+        I: inertial number
+        phi: volume fraction
+        """
         self.cof = cof
         self.ap = ap
-        self.I = I
-        self.n_wall_atoms = None
+        self.parameter = parameter
+        if parameter == "I":
+            self.I = value
+        elif parameter == "phi":
+            self.phi = value
+        else:
+            raise ValueError("Parameter not recognized")
+        
         self.n_sim = None
         self.step = None
         self.directory = None
         self.file_list = None
-        self.n_central_atoms = None
-
-    def set_number_wall_atoms(self, n_wall_atoms):
-        self.n_wall_atoms = n_wall_atoms
 
     def get_number_of_time_steps(self):
         digits = [int(''.join(re.findall(r'\d+', filename))) for filename in self.file_list]
@@ -24,41 +34,17 @@ class DataReader:
         self.step = int((max(digits) - min(digits)) / (self.n_sim - 1))
 
     def prepare_data(self, global_path):
-        self.directory = global_path + f'ap_{self.ap}_cof_{self.cof}_I_{self.I}/'
+        if self.parameter == "I":
+            self.directory = global_path + f'ap_{self.ap}_cof_{self.cof}_I_{self.I}/'
+        if self.parameter == "phi":
+            self.directory = global_path + f'phi_{self.phi}_ap_{self.ap}_cof_{self.cof}_v_1/'
         self.file_list = os.listdir(self.directory)
 
+    @abstractmethod
     def filter_relevant_files(self, prefix='shear_ellipsoids_'):
-        self.file_list = [filename for filename in self.file_list if filename[len(prefix) + 1].isdigit()]
-    
+        pass
+
     def sort_files_by_time(self):
         digits = [int(''.join(re.findall(r'\d+', filename))) for filename in self.file_list]
         time_idxs = np.argsort(digits)
         self.file_list = list(np.asarray(self.file_list)[time_idxs])
-
-    def get_number_of_atoms(self):
-        reader = vtk.vtkPolyDataReader()
-        reader.SetFileName(self.directory + self.file_list[0])
-        reader.Update()
-        polydata = reader.GetOutput()
-        self.n_all_atoms = polydata.GetNumberOfPoints()
-
-    def get_number_central_atoms(self):
-        self.n_central_atoms = self.n_all_atoms - self.n_wall_atoms
-
-    def get_velocities(self):
-        reader = vtk.vtkPolyDataReader()
-        reader.SetFileName(self.directory + self.file_list[0])
-        reader.Update()
-        polydata = reader.GetOutput()
-        ids = np.array(polydata.GetPointData().GetArray(0))
-        sorted_idxs = np.argsort(ids)
-        self.v0 = np.array(polydata.GetPointData().GetArray(3))[sorted_idxs, :][self.n_wall_atoms:, :]
-
-    def read_data(self, global_path, prefix):
-        self.prepare_data(global_path)
-        self.filter_relevant_files(prefix)
-        self.sort_files_by_time()
-        self.get_number_of_time_steps()
-        self.get_number_of_atoms()
-        self.get_number_central_atoms()
-        self.get_velocities()
