@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 class DataProcessor:
     def __init__(self, data):
         self.data_reader = data
-        self.num_processes = None
+        self.num_processes = 1 #default value
     @abstractmethod
     def process_data(self, num_processes):
         pass

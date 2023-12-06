@@ -16,13 +16,7 @@ class DataReader:
         self.cof = cof
         self.ap = ap
         self.parameter = parameter
-        if parameter == "I":
-            self.I = value
-        elif parameter == "phi":
-            self.phi = value
-        else:
-            raise ValueError("Parameter not recognized")
-        
+        self.value = value
         self.n_sim = None
         self.step = None
         self.directory = None
@@ -35,9 +29,11 @@ class DataReader:
 
     def prepare_data(self, global_path):
         if self.parameter == "I":
-            self.directory = global_path + f'ap_{self.ap}_cof_{self.cof}_I_{self.I}/'
+            self.directory = global_path + f'ap_{self.ap}_cof_{self.cof}_I_{self.value}/'
         if self.parameter == "phi":
-            self.directory = global_path + f'phi_{self.phi}_ap_{self.ap}_cof_{self.cof}_v_1/'
+            self.directory = global_path + f'phi_{self.value}_ap_{self.ap}_cof_{self.cof}_v_1/'
+        else:
+            raise ValueError('The parameter must be either I or phi')    
         self.file_list = os.listdir(self.directory)
 
     @abstractmethod
@@ -48,3 +44,4 @@ class DataReader:
         digits = [int(''.join(re.findall(r'\d+', filename))) for filename in self.file_list]
         time_idxs = np.argsort(digits)
         self.file_list = list(np.asarray(self.file_list)[time_idxs])
+

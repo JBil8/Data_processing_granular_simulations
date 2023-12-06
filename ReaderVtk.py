@@ -10,8 +10,15 @@ class ReaderVtk(DataReader):
         self.n_wall_atoms = None
         self.n_central_atoms = None
 
-    def set_number_wall_atoms(self, n_wall_atoms):
-        self.n_wall_atoms = n_wall_atoms
+    #to call only after the data have been read
+    def set_number_wall_atoms(self):
+        reader = vtk.vtkPolyDataReader()
+        reader.SetFileName(self.directory + self.file_list[0])
+        reader.Update()
+        polydata = reader.GetOutput()
+        coor = np.array(polydata.GetPoints().GetData())
+        _, counts = np.unique(coor[:,1], axis=0, return_counts=True)
+        self.n_wall_atoms = sum(counts[counts>1])
 
     def get_number_of_atoms(self):
         reader = vtk.vtkPolyDataReader()
@@ -23,7 +30,7 @@ class ReaderVtk(DataReader):
     def get_number_central_atoms(self):
         self.n_central_atoms = self.n_all_atoms - self.n_wall_atoms
 
-    def get_velocities(self):
+    def get_initial_velocities(self):
         reader = vtk.vtkPolyDataReader()
         reader.SetFileName(self.directory + self.file_list[0])
         reader.Update()
@@ -41,5 +48,3 @@ class ReaderVtk(DataReader):
         self.sort_files_by_time()
         self.get_number_of_time_steps()
         self.get_number_of_atoms()
-        self.get_number_central_atoms()
-        self.get_velocities()

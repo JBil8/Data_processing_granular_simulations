@@ -32,12 +32,12 @@ class ProcessorDump(DataProcessor):
         Calling the other methods for the processing"""
 
         data = np.loadtxt(self.directory+self.file_list[step], skiprows=9)
-        self.point = data[:, 3:6]
-        self.force = data[:, 9:12]
-        self.force_tangential = data[:, 12:15]
-        self.shear = data[:, 15:18]
-        self.area = data[:, 19]
-        self.delta = data[:, 20]
+        self.point = data[:, 3:6] #contact_point
+        self.force = data[:, 9:12] #contact_force
+        self.force_tangential = data[:, 12:15] #contact_tangential_force
+        self.shear = data[:, 15:18] #shear components of the contact force
+        self.area = data[:, 19] #interpenetration area
+        self.delta = data[:, 20] #interpenetration distance
 
         self.compute_space_averages()
         return np.concatenate((self.force_space_average,
