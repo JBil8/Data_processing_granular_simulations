@@ -1,7 +1,5 @@
 import multiprocessing
 import numpy as np
-import vtk
-import functools
 from DataProcessor import DataProcessor
 
 class ProcessorDump(DataProcessor):
