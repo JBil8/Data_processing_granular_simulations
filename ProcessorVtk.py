@@ -49,9 +49,10 @@ class ProcessorVtk(DataProcessor):
         self.compute_autocorrelation_vel()
         eulerian_velocities = self.eulerian_velocity(10)
         return np.concatenate((self.velocities_space_average, self.vx_space_average.reshape(1,),
-                         self.omegas_space_average, self.omegaz_space_average.reshape(1,),
-                           self.shearing_force.reshape(1,), self.alignment_space_average.reshape(1,),
-                           self.box_height.reshape(1,), self.compute_autocorrelation_vel().reshape(1,), 
+                        self.omegas_space_average, self.omegaz_space_average.reshape(1,),
+                        self.shearing_force.reshape(1,), self.alignment_space_average.reshape(1,),
+                        self.S2_space_average.reshape(1,),
+                        self.box_height.reshape(1,), self.compute_autocorrelation_vel().reshape(1,), 
                            eulerian_velocities),)
     
 
@@ -69,7 +70,7 @@ class ProcessorVtk(DataProcessor):
         self.coor = np.array(self.polydata.GetPoints().GetData())[self.ids][self.n_wall_atoms:,:]
         self.velocities = np.array(self.polydatapoints.GetArray("v"))[self.ids, :][self.n_wall_atoms:, :]
         self.forces_particles = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][self.n_wall_atoms:, :]
-        self.forces_walls = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][int(self.n_wall_atoms/2):self.n_wall_atoms, :]
+        self.forces_walls = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][int(self.n_wall_atoms/2+1):self.n_wall_atoms, :]
         self.omegas = np.array(self.polydatapoints.GetArray("omega"))[self.ids, :][self.n_wall_atoms:, :]
         self.torques = np.array(self.polydatapoints.GetArray("tq"))[self.ids, :][self.n_wall_atoms:, :]
         self.orientations = np.array(self.polydatapoints.GetArray("TENSOR"))[self.ids, :][self.n_wall_atoms:, :].reshape(self.n_central_atoms,3,3)
@@ -90,7 +91,7 @@ class ProcessorVtk(DataProcessor):
         self.vx_space_average = np.mean(self.velocities[:,0])
         self.omegas_space_average = np.mean(self.omegas, axis=0)
         self.omegaz_space_average = np.mean(self.omegas[:, 2])
-        self.shearing_force = np.sum(self.forces_walls[:,0]) #only x component of the force 
+        self.shearing_force = np.mean(self.forces_walls[:,0]) #only x component of the force 
     
     def compute_box_height(self):
         """
@@ -99,41 +100,54 @@ class ProcessorVtk(DataProcessor):
         self.box_height = np.max(self.coor[:,1])-np.min(self.coor[:,1])
         
 
-    def compute_alignment(self):
+    def compute_alignment(self, store_heads = None):
         """
         Compute the alignment of the particles with respect to the flow direction (angle theta in previous papers)
         I am assuming there is no alignment in the z direction (out of plane)
+        Then I compute the nematic order parameter S2 along that direction
         """
-        horizontal_vector = np.array([1,0,0])
+        starting_vector = np.array([0,0,1])
         alignment = np.zeros((self.n_central_atoms, 1))
+        S2 = np.zeros((self.n_central_atoms, 1))
+        if store_heads is not None:
+            arrow_heads = np.zeros((self.n_central_atoms, 3)) #for plotting purposes
+
         for j in range(self.n_central_atoms):
             rot = self.orientations[j]
             if not np.isclose(rot@rot.T, np.diag(np.ones(3))).all():
                 raise SystemExit('Error: One of the points did not store a rotation matrix')
             #project the vector on the plane x and y -> just take the first two components
-            main_axis_ellipsoid = rot@np.array([0,0,1]) # longest axis is always stored as the third column
+            main_axis_ellipsoid = rot@starting_vector # longest axis is always stored as the third column
             angle_with_flow = np.arctan2(main_axis_ellipsoid[1], main_axis_ellipsoid[0])
+            angle_out_of_flow = np.arctan2(main_axis_ellipsoid[2], main_axis_ellipsoid[0])
             alignment[j] = angle_with_flow
+        self.alignemnt_out_of_flow = np.mean(angle_out_of_flow) #maybe also compute time average
         self.alignment_space_average = np.mean(alignment)
+        # nematic_vector = np.array([np.cos(self.alignment_space_average), np.sin(self.alignment_space_average), 0]) #direction of average alignment
+        # for j in range(self.n_central_atoms):
+        #     rot = self.orientations[j]
+        #     if store_heads is not None:
+        #         arrow_heads[j] = rot@starting_vector 
+        #     grain_vector = rot@starting_vector
+        #     grain_vectorxy_plane = np.array([grain_vector[0], grain_vector[1], 0])/np.linalg.norm(grain_vector[:2])
+        #     cos_theta = np.dot(grain_vector, nematic_vector)
+        #     S2[j] = (3*cos_theta**2-1)/2
 
-    def compute_S2(self, average_alignment, store_heads = None):
-        """
-        Compute the order parameter S2
-        To call after the angle of alignment has been computed"""
-        starting_vector = np.array([0,0,1])
-        nematic_vector = np.array([np.cos(average_alignment), np.sin(average_alignment), 0])
-        S2 = np.zeros((self.n_central_atoms, 1))
-        if store_heads is not None:
-            arrow_heads = np.zeros((self.n_central_atoms, 3)) #for plotting purposes
+        #2d alternative as in the paper
+        nematic_vector = np.array([np.cos(self.alignment_space_average), np.sin(self.alignment_space_average)])
+        Qx = np.zeros(self.n_central_atoms)
+        Qy = np.zeros(self.n_central_atoms)
         for j in range(self.n_central_atoms):
             rot = self.orientations[j]
-            cos_theta = np.dot((rot@starting_vector), nematic_vector)
-            S2[j] = (3*cos_theta**2-1)/2
-            if store_heads is not None:
-                arrow_heads[j] = rot@starting_vector 
-        self.S2_space_average = np.mean(S2)
-        if store_heads is not None:
-            return arrow_heads
+            grain_vector = rot@starting_vector
+            grain_vectorxy_plane = np.array([grain_vector[0], grain_vector[1]])/np.linalg.norm(grain_vector[:2])
+            cos_theta = np.dot(grain_vectorxy_plane, nematic_vector)
+            theta = np.arccos(cos_theta)
+            Qx[j] = np.cos(2*theta)
+            Qy[j] = np.sin(2*theta)
+            
+        self.S2_space_average = np.sqrt(np.mean(Qx)**2+np.mean(Qy)**2) #nematic order parameter in 2 D
+        
 
     def eulerian_velocity(self, n_intervals):
         """

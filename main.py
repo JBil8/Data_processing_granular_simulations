@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import vtk
+import argparse
 import matplotlib.pyplot as plt
 #from scipy.spatial.transform import Rotation as R
 import os
@@ -15,64 +16,82 @@ from ReaderDump import ReaderDump
 
 if __name__ == "__main__":
 
+    
+    parser = argparse.ArgumentParser(description='Process granular simulation.')
+    parser.add_argument('-c', '--cof', type=float, help='coefficient of friction')
+    parser.add_argument('-a', '--ap', type=float, help='aspect ratio')
+    parser.add_argument('-t', '--type', type=str, help='simulation type')
+    parser.add_argument('-v', '--value', type=float, help='packing fraction or Inertial number depensing on the type of simulation')
+    args = parser.parse_args()
+
+    #parsing command line arguments
+    cof = args.cof
+    ap = args.ap
+    param = args.value
+    simulation_type = args.type
+
     # Define the directory where your files are located
-    #global_path = '/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/simulations_simple_shear/parametric_studies/'
-    global_path = "/scratch/bilotto/simulations_volume_fraction/parametric_studies/" #phi_0.6_ap_1.5_cof_0.4_v_5.6"
+    #global_path = "/scratch/bilotto/simulations_volume_fraction/parametric_studies/" #phi_0.6_ap_1.5_cof_0.4_v_5.6"
     # Parameter that vary in the parametric study
     #cof_list = ['0.0', '0.4','1.0', '10.0']
-    ap_list = ['1.0', '1.5', '2.0', '2.5', '3.0']
+    #ap_list = ['1.0', '1.5', '2.0', '2.5', '3.0']
     #I_list = ['0.0001', '0.000501', '0.0025', '0.013', '0.063', '0.32']
-    phi_list = ['0.5', '0.6', '0.7', '0.8', '0.9']
-    #phi_list = ['0.6']
-    I_list = ['0.0001']  
-    cof_list = ['0.4']
-    #ap_list = ['1.5']
-    
-    n_param = len(cof_list)*len(ap_list)*len(phi_list)
-    num_processes = 10
+    #phi_list = ['0.5', '0.6', '0.7', '0.8', '0.9']
 
-    # data_read = DataReader(cof_list[1], ap_list[1], I_list[4])
-    # data_read.set_number_wall_atoms(1062)
-    # data_read.read_data(global_path, 'shear_ellipsoids_')
-    # to_process = DataProcessor(data_read)
-    # seq = to_process.process_data(num_processes)
-    # plotting = DataPlotter(seq)
-    # fig = plotting.plot_data()
-    # fig.savefig('simple_shear_ap' + ap + '_cof_' + cof + '_I_' + I + '.png')
+    num_processes = 8
+
+    if simulation_type == "I":
+        global_path = '/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/simulations_simple_shear/parametric_studies/'
+    elif simulation_type == "phi":
+        global_path = '/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/parametric_studies/'
+    else:
+        raise ValueError("simulation_type must be either I or phi") 
     plt.ioff()
-    for ap in ap_list:
-        for cof in cof_list:
-            for phi in phi_list:
-                data_read = ReaderVtk(cof, ap, "phi", phi)
-                data_read.read_data(global_path, 'shear_ellipsoids_')
-                data_read.set_number_wall_atoms()
-                data_read.get_number_central_atoms()
-                data_read.get_initial_velocities()
-                data_dump = ReaderDump(cof, ap, "phi", phi)
-                data_dump.read_data(global_path, 'shear_ellipsoids_contact_data_')
-                to_process_vtk = ProcessorVtk(data_read)
-                seq_vtk = to_process_vtk.process_data(num_processes)
-                #eul_vel = to_process_vtk.eulerian_velocity(10)
-                #to_process_dump = ProcessorDump(data_dump)
-                #seq_dump = to_process_dump.process_data(num_processes)
-                #print(seq_dump[:,-1])
-                plotter = DataPlotter(seq_vtk, cof, ap, "phi" ,phi)
-                plotter.plot_data()
-                
+    #initialize the vtk reader
+    data_read = ReaderVtk(cof, ap, simulation_type, param)
+    data_read.read_data(global_path, 'shear_ellipsoids_')
+    data_read.set_number_wall_atoms()
+    data_read.get_number_central_atoms()
+    data_read.get_initial_velocities()
+    #intialize the dump reader
+    data_dump = ReaderDump(cof, ap, simulation_type, param)
+    data_dump.read_data(global_path, 'shear_ellipsoids_contact_data_')
+    to_process_vtk = ProcessorVtk(data_read)
+    to_process_dump = ProcessorDump(data_dump, data_read.n_wall_atoms, data_read.n_central_atoms)
+    
+    with multiprocessing.Pool(num_processes) as pool:
+        print("Started multiprocessing")
+        results_vtk = pool.map(to_process_vtk.process_single_step,
+                            [step for step in range(to_process_vtk.n_sim)])
+        results_dump = pool.map(to_process_dump.process_single_step,
+                            [step for step in range(to_process_dump.n_sim)])
+    # Extract the averages from the results
+        averages_vtk = np.array(results_vtk)
+        averages_dump = np.array(results_dump)
+    
+    #to_process_dump.process_single_step(200)
+    #to_process_dump.compute_force_distribution()
+    #to_process_dump.plot_force_chain(200)
 
-                # plotting = DataPlotter(seq_dump)
-                # fig = plotting.plot_data()
-                # fig.suptitle('ap = ' + ap + ', cof = ' + cof + ', I = ' + I)
-                # fig.savefig('simple_shear_ap' + ap + '_cof_' + cof + '_I_' + I + '.png')
+    # plt.figure()
+    # plt.subplot(2,2,1)
+    # plt.plot(to_process_dump.force_distribution_x[1][:-1], to_process_dump.force_distribution_x[0])
+    # plt.xlabel('Fx')
+    # plt.subplot(2,2,2)
+    # plt.plot(to_process_dump.force_distribution_y[1][:-1], to_process_dump.force_distribution_y[0])
+    # plt.xlabel('Fy')
+    # plt.subplot(2,2,3)
+    # plt.plot(to_process_dump.force_distribution_z[1][:-1], to_process_dump.force_distribution_z[0])
+    # plt.xlabel('Fz')
+    # plt.subplot(2,2,4)
+    # plt.plot(to_process_dump.force_distribution[1][:-1], to_process_dump.force_distribution[0])
+    # plt.xlabel('F')
+    # plt.show()
+    #seq_dump = to_process_dump.process_data(num_processes)
+    plotter = DataPlotter(averages_vtk, averages_dump, ap, cof, simulation_type ,param)
+    plotter.plot_data()
+    
+    # to implement: eulerian velocities and contact network
+
+
     plt.ion()
-    #eulerian = processed.eulerian_velocity(10)
-    #trajectory = processed.compute_single_particle_trajectory(10, 2)
-    #averages = processed.process_data()
-    #print(eulerian)
-    #print(trajectory)
-    # param_averages = np.zeros((300, 10, len(I_list), len(ap_list)))
-    # for id2, ap in enumerate(ap_list):
-    #     for id1, I in enumerate(I_list):
-    #         processor = DataProcessor(cof_list[2], ap, I, n_sim, num_processes)
-    #         averages = processor.process_data()
-    #         param_averages[:n_sim, :, id1, id2] = np.array(averages)

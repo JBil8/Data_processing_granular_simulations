@@ -30,7 +30,7 @@ class DataReader:
     def prepare_data(self, global_path):
         if self.parameter == "I":
             self.directory = global_path + f'ap_{self.ap}_cof_{self.cof}_I_{self.value}/'
-        if self.parameter == "phi":
+        elif self.parameter == "phi":
             self.directory = global_path + f'phi_{self.value}_ap_{self.ap}_cof_{self.cof}_v_1/'
         else:
             raise ValueError('The parameter must be either I or phi')    

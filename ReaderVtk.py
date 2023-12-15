@@ -18,7 +18,7 @@ class ReaderVtk(DataReader):
         polydata = reader.GetOutput()
         coor = np.array(polydata.GetPoints().GetData())
         _, counts = np.unique(coor[:,1], axis=0, return_counts=True)
-        self.n_wall_atoms = sum(counts[counts>1])
+        self.n_wall_atoms = sum(counts[counts>4])
 
     def get_number_of_atoms(self):
         reader = vtk.vtkPolyDataReader()
