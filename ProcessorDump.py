@@ -82,7 +82,6 @@ class ProcessorDump(DataProcessor):
         data = np.loadtxt(self.directory+self.file_list[step], skiprows=9)
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111, projection='3d')
-        print(self.n_wall_atoms)
         for i in range(len(data)):
             if data[i, 6] > self.n_wall_atoms and data[i, 7] > self.n_wall_atoms and data[i, 8] != 1:
                 ax.plot([data[i, 0], data[i,3]], [data[i, 2], data[i,5]], [data[i, 1], data[i,4]], linestyle='-', color='k')

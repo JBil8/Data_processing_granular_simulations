@@ -22,16 +22,19 @@ class DataPlotter:
         plt.plot(strain, self.data_vtk[:,7])
         plt.ylabel('Omegaz [rad/s]')
         ax = fig.add_subplot(333)
-        plt.plot(strain, self.data_vtk[:,8])
+        plt.plot(strain, -self.data_vtk[:,8])
         plt.ylabel('Shearing force [N]')
         ax = fig.add_subplot(334)
         plt.plot(strain, self.data_vtk[:,9]*180/np.pi) #convert to degrees
         plt.ylabel('theta [deg]')
         ax = fig.add_subplot(335)
-        plt.plot(strain, self.data_vtk[:,10])
-        plt.ylabel('S2')
+        plt.plot(strain, self.data_vtk[:,10]*180/np.pi) #convert to degrees
+        plt.ylabel('theta_z [deg]')
         ax = fig.add_subplot(336)
-        plt.plot(strain, self.data_vtk[:,12])
+        plt.plot(strain, self.data_vtk[:,11])
+        plt.ylabel('S2')
+        ax = fig.add_subplot(337)
+        plt.plot(strain, self.data_vtk[:,13])
         plt.ylabel('Autocorrelation V')
         plt.xlabel('Strain')
 
@@ -43,9 +46,13 @@ class DataPlotter:
         # plt.plot(strain, self.data_dump[:,8])
         # plt.ylabel('Average area in contacts [m^2]')
 
-        ax = fig.add_subplot(337)
+        ax = fig.add_subplot(338)
         plt.plot(strain, self.data_dump[:,10])
         plt.ylabel('Average overlap in contacts [m]')
+
+        ax = fig.add_subplot(339)
+        plt.plot(strain, self.data_vtk[:,14])
+        plt.ylabel('Mean square displacement [m^2]')
 
         fig.suptitle('ap = ' + self.ap + ', cof = ' + self.cof + ', ' + self.parameter +  '=' + self.value)
         fig.savefig('output_plots/simple_shear_ap' + self.ap + '_cof_' + self.cof + '_' + self.parameter + '_' + self.value + '.png')
@@ -61,7 +68,7 @@ class DataPlotter:
         for i in range(n_plots):
             #ax = fig2.add_subplot(2, int(n_plots/2), i+1)
             color = plt.cm.viridis(i / n_plots)  # color will now be an RGBA tuple
-            plt.plot(self.data_vtk[i*time_interval,3:13], y, label = f'strain  = {i*time_interval*20/n_time_steps:.2f}', color=color)
+            plt.plot(self.data_vtk[i*time_interval,15:], y, label = f'strain  = {i*time_interval*20/n_time_steps:.2f}', color=color)
         plt.xlabel('Vx/V')
         plt.ylabel('y/H')
         plt.legend()

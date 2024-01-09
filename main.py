@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process granular simulation.')
     parser.add_argument('-c', '--cof', type=float, help='coefficient of friction')
     parser.add_argument('-a', '--ap', type=float, help='aspect ratio')
-    parser.add_argument('-t', '--type', type=str, help='simulation type')
+    parser.add_argument('-t', '--type', type=str, help='simulation type: either I or phi')
     parser.add_argument('-v', '--value', type=float, help='packing fraction or Inertial number depensing on the type of simulation')
     args = parser.parse_args()
 
@@ -69,9 +69,10 @@ if __name__ == "__main__":
         averages_vtk = np.array(results_vtk)
         averages_dump = np.array(results_dump)
     
-    #to_process_dump.process_single_step(200)
-    #to_process_dump.compute_force_distribution()
-    #to_process_dump.plot_force_chain(200)
+
+    to_process_dump.process_single_step(200)
+    to_process_dump.compute_force_distribution()
+    to_process_dump.plot_force_chain(200)
 
     # plt.figure()
     # plt.subplot(2,2,1)

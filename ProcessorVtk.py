@@ -9,7 +9,7 @@ class ProcessorVtk(DataProcessor):
         self.n_sim = self.data_reader.n_sim
         self.n_central_atoms = self.data_reader.n_central_atoms
         self.v0 = self.data_reader.v0
-        print(self.v0.shape)
+        self.y0 = self.data_reader.y0
         self.directory = self.data_reader.directory
         self.file_list = self.data_reader.file_list
         self.n_wall_atoms = self.data_reader.n_wall_atoms
@@ -46,16 +46,21 @@ class ProcessorVtk(DataProcessor):
         self.compute_space_averages()
         self.compute_box_height() 
         self.compute_alignment()
-        self.compute_autocorrelation_vel()
+        self.compute_mean_square_displacement()
         eulerian_velocities = self.eulerian_velocity(10)
-        return np.concatenate((self.velocities_space_average, self.vx_space_average.reshape(1,),
-                        self.omegas_space_average, self.omegaz_space_average.reshape(1,),
-                        self.shearing_force.reshape(1,), self.alignment_space_average.reshape(1,),
-                        self.S2_space_average.reshape(1,),
-                        self.box_height.reshape(1,), self.compute_autocorrelation_vel().reshape(1,), 
-                           eulerian_velocities),)
+        return np.concatenate((self.velocities_space_average,
+                               self.vx_space_average.reshape(1,),
+                               self.omegas_space_average, 
+                               self.omegaz_space_average.reshape(1,),
+                               self.shearing_force.reshape(1,), 
+                               self.alignment_space_average.reshape(1,),
+                               self.alignment_out_of_flow.reshape(1,),
+                               self.S2_space_average.reshape(1,), 
+                               self.box_height.reshape(1,),
+                               self.compute_autocorrelation_vel().reshape(1,), 
+                               self.mean_square_displacement.reshape(1,),
+                               eulerian_velocities),)
     
-
     def get_ids(self):
         """
         read and sort the identifiers. Particles making the walls have ids with lower values
@@ -70,7 +75,11 @@ class ProcessorVtk(DataProcessor):
         self.coor = np.array(self.polydata.GetPoints().GetData())[self.ids][self.n_wall_atoms:,:]
         self.velocities = np.array(self.polydatapoints.GetArray("v"))[self.ids, :][self.n_wall_atoms:, :]
         self.forces_particles = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][self.n_wall_atoms:, :]
-        self.forces_walls = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][int(self.n_wall_atoms/2+1):self.n_wall_atoms, :]
+        coordinates_bottom_wall = np.array(self.polydata.GetPoints().GetData())[self.ids][int(self.n_wall_atoms/2):self.n_wall_atoms, :]
+        if not np.allclose(coordinates_bottom_wall[:,1], np.min(coordinates_bottom_wall[:,1]), atol=1e-5):
+            self.forces_walls = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][int(self.n_wall_atoms/2):self.n_wall_atoms, :]
+        else:
+            self.forces_walls = np.array(self.polydatapoints.GetArray("f"))[self.ids, :][int(self.n_wall_atoms/2+1):self.n_wall_atoms-1, :]
         self.omegas = np.array(self.polydatapoints.GetArray("omega"))[self.ids, :][self.n_wall_atoms:, :]
         self.torques = np.array(self.polydatapoints.GetArray("tq"))[self.ids, :][self.n_wall_atoms:, :]
         self.orientations = np.array(self.polydatapoints.GetArray("TENSOR"))[self.ids, :][self.n_wall_atoms:, :].reshape(self.n_central_atoms,3,3)
@@ -100,6 +109,13 @@ class ProcessorVtk(DataProcessor):
         self.box_height = np.max(self.coor[:,1])-np.min(self.coor[:,1])
         
 
+    def compute_mean_square_displacement(self):
+        """
+        Compute the mean square displacement of the particles in the direction perpendicular to the flow to the flow
+        """
+        #compute the mean square displacement of the particles
+        self.mean_square_displacement = np.mean((self.coor[:,1]-self.y0)**2)
+
     def compute_alignment(self, store_heads = None):
         """
         Compute the alignment of the particles with respect to the flow direction (angle theta in previous papers)
@@ -107,7 +123,8 @@ class ProcessorVtk(DataProcessor):
         Then I compute the nematic order parameter S2 along that direction
         """
         starting_vector = np.array([0,0,1])
-        alignment = np.zeros((self.n_central_atoms, 1))
+        flow_angle = np.zeros((self.n_central_atoms, 1))
+        out_flow_angle = np.zeros((self.n_central_atoms, 1))
         S2 = np.zeros((self.n_central_atoms, 1))
         if store_heads is not None:
             arrow_heads = np.zeros((self.n_central_atoms, 3)) #for plotting purposes
@@ -118,11 +135,11 @@ class ProcessorVtk(DataProcessor):
                 raise SystemExit('Error: One of the points did not store a rotation matrix')
             #project the vector on the plane x and y -> just take the first two components
             main_axis_ellipsoid = rot@starting_vector # longest axis is always stored as the third column
-            angle_with_flow = np.arctan2(main_axis_ellipsoid[1], main_axis_ellipsoid[0])
-            angle_out_of_flow = np.arctan2(main_axis_ellipsoid[2], main_axis_ellipsoid[0])
-            alignment[j] = angle_with_flow
-        self.alignemnt_out_of_flow = np.mean(angle_out_of_flow) #maybe also compute time average
-        self.alignment_space_average = np.mean(alignment)
+            flow_angle[j] = np.arctan2(main_axis_ellipsoid[1], main_axis_ellipsoid[0])
+            out_flow_angle[j] = np.arctan2(main_axis_ellipsoid[2], main_axis_ellipsoid[0])
+            
+        self.alignment_out_of_flow = np.mean(out_flow_angle) #maybe also compute time average
+        self.alignment_space_average = np.mean(flow_angle)
         # nematic_vector = np.array([np.cos(self.alignment_space_average), np.sin(self.alignment_space_average), 0]) #direction of average alignment
         # for j in range(self.n_central_atoms):
         #     rot = self.orientations[j]
@@ -163,7 +180,6 @@ class ProcessorVtk(DataProcessor):
         for j in range(n_intervals):
             bin_idxs = np.where(scaled_coor==j)[0] #np.where returns a tuple with indexes in the first component
             velocities_per_layer[j] = np.mean(self.velocities[bin_idxs,0])
-
         return velocities_per_layer
 
     #compute single particles space trajectory

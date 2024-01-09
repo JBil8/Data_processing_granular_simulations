@@ -38,7 +38,8 @@ class ReaderVtk(DataReader):
         ids = np.array(polydata.GetPointData().GetArray(0))
         sorted_idxs = np.argsort(ids)
         self.v0 = np.array(polydata.GetPointData().GetArray(3))[sorted_idxs, :][self.n_wall_atoms:, :]
-
+        self.y0 = np.array(polydata.GetPoints().GetData())[sorted_idxs, :][self.n_wall_atoms:, 1]
+        
     def filter_relevant_files(self, prefix='shear_ellipsoids_'):
         self.file_list = [filename for filename in self.file_list if filename[len(prefix) + 1].isdigit() and filename[-1] == 'k']
 
