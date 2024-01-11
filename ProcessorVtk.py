@@ -59,6 +59,7 @@ class ProcessorVtk(DataProcessor):
                                self.box_height.reshape(1,),
                                self.compute_autocorrelation_vel().reshape(1,), 
                                self.mean_square_displacement.reshape(1,),
+                               self.effective_friction.reshape(1,),
                                eulerian_velocities),)
     
     def get_ids(self):
@@ -101,6 +102,8 @@ class ProcessorVtk(DataProcessor):
         self.omegas_space_average = np.mean(self.omegas, axis=0)
         self.omegaz_space_average = np.mean(self.omegas[:, 2])
         self.shearing_force = np.mean(self.forces_walls[:,0]) #only x component of the force 
+        self.vertical_force = np.mean(self.forces_walls[:,1]) #only y component of the force
+        self.effective_friction = self.shearing_force/self.vertical_force
     
     def compute_box_height(self):
         """

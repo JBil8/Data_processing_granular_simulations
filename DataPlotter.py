@@ -26,7 +26,7 @@ class DataPlotter:
         plt.ylabel('Shearing force [N]')
         ax = fig.add_subplot(334)
         plt.plot(strain, self.data_vtk[:,9]*180/np.pi) #convert to degrees
-        plt.ylabel('theta [deg]')
+        plt.ylabel('theta_x [deg]')
         ax = fig.add_subplot(335)
         plt.plot(strain, self.data_vtk[:,10]*180/np.pi) #convert to degrees
         plt.ylabel('theta_z [deg]')
@@ -47,8 +47,10 @@ class DataPlotter:
         # plt.ylabel('Average area in contacts [m^2]')
 
         ax = fig.add_subplot(338)
-        plt.plot(strain, self.data_dump[:,10])
-        plt.ylabel('Average overlap in contacts [m]')
+        plt.plot(strain, self.data_vtk[:,15])
+        plt.ylabel('Effecive \mu')
+        # plt.plot(strain, self.data_dump[:,10])
+        # plt.ylabel('Average overlap in contacts [m]')
 
         ax = fig.add_subplot(339)
         plt.plot(strain, self.data_vtk[:,14])
@@ -68,7 +70,7 @@ class DataPlotter:
         for i in range(n_plots):
             #ax = fig2.add_subplot(2, int(n_plots/2), i+1)
             color = plt.cm.viridis(i / n_plots)  # color will now be an RGBA tuple
-            plt.plot(self.data_vtk[i*time_interval,15:], y, label = f'strain  = {i*time_interval*20/n_time_steps:.2f}', color=color)
+            plt.plot(self.data_vtk[i*time_interval,16:], y, label = f'strain  = {i*time_interval*20/n_time_steps:.2f}', color=color)
         plt.xlabel('Vx/V')
         plt.ylabel('y/H')
         plt.legend()
