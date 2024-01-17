@@ -63,36 +63,52 @@ if __name__ == "__main__":
         print("Started multiprocessing")
         results_vtk = pool.map(to_process_vtk.process_single_step,
                             [step for step in range(to_process_vtk.n_sim)])
-        results_dump = pool.map(to_process_dump.process_single_step,
-                            [step for step in range(to_process_dump.n_sim)])
-    # Extract the averages from the results
-        averages_vtk = np.array(results_vtk)
-        averages_dump = np.array(results_dump)
+    #     results_dump = pool.map(to_process_dump.process_single_step,
+    #                         [step for step in range(to_process_dump.n_sim)])
+        
+        #Extract the averages from the results
+        averages_vtk = {}
+        
+        for key in results_vtk[0].keys():
+            if key == 'trackedGrainsOrientation' or key == 'trackedGrainsPosition':
+            # Stack the arrays along a new axis to preserve the structure
+                averages_vtk[key] = np.stack([result[key] for result in results_vtk], axis=0)
+            else:
+                averages_vtk[key] = np.array([result[key] for result in results_vtk])
+  
+    #     averages_dump = {}
+    #     for key in results_dump[0].keys():
+    #         if key == "trackedGrainsContactData":
+    #             # list of multidimensional arrays for contact data
+    #             averages_dump[key] = [result[key] for result in results_dump]
+    #         else:
+    #             averages_dump[key] = np.array([result[key] for result in results_dump])
+
+
+    plotter = DataPlotter(ap, cof, simulation_type ,param)
+    # plotter.plot_data(averages_vtk, averages_dump)
+    # plotter.plot_eulerian_velocities(averages_vtk)
+
+    # #force distrubution
     
+    # with multiprocessing.Pool(num_processes) as pool:
+    #     print("Started multiprocessing")
+    #     results = pool.map(to_process_dump.force_single_step,
+    #                         [step for step in range(to_process_dump.n_sim)])
+    # # stack all the forces and force tangential to compute the distribution
+    # force_normal_stack = np.concatenate([result['force_normal'] for result in results])
+    # force_tangential_stack = np.concatenate([result['force_tangential'] for result in results])
 
-    to_process_dump.process_single_step(200)
-    to_process_dump.compute_force_distribution()
-    to_process_dump.plot_force_chain(200)
+    # force_normal_distribution = np.histogram(force_normal_stack, bins=100, density=True)
+    # force_tangential_distribution = np.histogram(force_tangential_stack, bins=100, density=True)
 
-    # plt.figure()
-    # plt.subplot(2,2,1)
-    # plt.plot(to_process_dump.force_distribution_x[1][:-1], to_process_dump.force_distribution_x[0])
-    # plt.xlabel('Fx')
-    # plt.subplot(2,2,2)
-    # plt.plot(to_process_dump.force_distribution_y[1][:-1], to_process_dump.force_distribution_y[0])
-    # plt.xlabel('Fy')
-    # plt.subplot(2,2,3)
-    # plt.plot(to_process_dump.force_distribution_z[1][:-1], to_process_dump.force_distribution_z[0])
-    # plt.xlabel('Fz')
-    # plt.subplot(2,2,4)
-    # plt.plot(to_process_dump.force_distribution[1][:-1], to_process_dump.force_distribution[0])
-    # plt.xlabel('F')
-    # plt.show()
-    #seq_dump = to_process_dump.process_data(num_processes)
-    plotter = DataPlotter(averages_vtk, averages_dump, ap, cof, simulation_type ,param)
-    plotter.plot_data()
+    # plotter.plot_force_distribution(force_normal_distribution, force_tangential_distribution)
+
+    #analysis of the tracked grains contact data
+
+    #plot the ellipsoids in 3d
     
-    # to implement: eulerian velocities and contact network
-
+    plotter.plot_ellipsoids(0, averages_vtk)
 
     plt.ion()
+

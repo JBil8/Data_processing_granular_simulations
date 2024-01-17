@@ -9,8 +9,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": true
+            "args": ["-c", "0.4", "-a", "1.0", "-t", "phi", "-v", "0.9"],
+            "console": "integratedTerminal"
         }
     ]
 }

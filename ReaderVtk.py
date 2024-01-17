@@ -32,7 +32,7 @@ class ReaderVtk(DataReader):
 
     def get_initial_velocities(self):
         reader = vtk.vtkPolyDataReader()
-        reader.SetFileName(self.directory + self.file_list[0])
+        reader.SetFileName(self.directory + self.file_list[100])
         reader.Update()
         polydata = reader.GetOutput()
         ids = np.array(polydata.GetPointData().GetArray(0))
