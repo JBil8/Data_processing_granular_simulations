@@ -2,15 +2,16 @@
 
 # Define the parameters
 cofs=(0.0 0.4 1.0 10.0)
-aspectRatio=(1.0 1.5 2.0 2.5 3.0)
+#aspectRatio=(1.0 1.5 2.0 2.5 3.0)
 phis=(0.5 0.6 0.7 0.8 0.9)
+aspectRatio=(1.0 2.0 2.5 3.0)
 
 cofs=(0.4)
-aspectRatio=(1.0)
-phis=(0.5 0.6 0.7)
+
+phis=(0.5 0.6 0.7 0.8 0.9)
 
 # Define the maximum number of parallel tasks
-max_parallel_tasks=8
+max_parallel_tasks=50
 
 echo "Start of the loop"
 
@@ -30,7 +31,7 @@ do
             chmod +x "$job_script"
 
             # Submit the job script to the background
-            source "$job_script" &
+            ./"$job_script" &
             
             # Limit the number of parallel tasks
             running_tasks=$(jobs -p | wc -l)
