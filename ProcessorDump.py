@@ -44,15 +44,35 @@ class ProcessorDump(DataProcessor):
         self.shear = data[:, 15:18] #shear components of the contact force
         self.area = data[:, 18] #interpenetration area
         self.delta = data[:, 22] #interpenetration distance
-
+        data_sampled = self.store_data_tracked_grains(data, 10)
         self.compute_space_averages()
-        return np.concatenate((self.force_space_average,
-                               self.force_tangential_space_average,
-                               self.shear_space_average,
-                               self.area_space_average.reshape(1,),
-                               self.delta_space_average.reshape(1,), 
-                               self.contact_number.reshape(1,)))
+        avg_dict = {'force': self.force_space_average,
+                    'force_tangential': self.force_tangential_space_average,
+                    'shear': self.shear_space_average,
+                    'area': self.area_space_average,
+                    'delta': self.delta_space_average,
+                    'Z': self.contact_number,
+                    'trackedGrainsContactData': data_sampled}
+        return avg_dict
     
+    def force_single_step(self, step):
+        """Processing on the data for one single step
+        Calling the other methods for the processing"""
+
+        data = np.loadtxt(self.directory+self.file_list[step], skiprows=9)
+        #excluding contacts between wall particles
+        first_col_check = (data[:,6] > self.n_wall_atoms)
+        second_col_check = (data[:,7] > self.n_wall_atoms)
+        not_wall_contacts = np.logical_and(first_col_check, second_col_check)
+        data = data[not_wall_contacts]  
+        self.force = data[:, 9:12] #contact_force
+        self.force_tangential = data[:, 12:15] #contact_tangential_force
+        #compute intesity of the normal force
+        force_normal = np.linalg.norm(self.force-self.force_tangential, axis=1)
+        force_dict = {'force_normal': force_normal,
+                    'force_tangential': np.linalg.norm(self.force_tangential, axis=1)}
+        return force_dict
+
     def compute_force_distribution(self):
         """Compute the force distribution"""
         self.force_distribution_x = np.histogram(np.abs(self.force[:, 0]), bins=100)
@@ -65,7 +85,7 @@ class ProcessorDump(DataProcessor):
         self.force_tangential_distribution_x = np.histogram(self.force_tangential[:, 0], bins=100)
         self.force_tangential_distribution_y = np.histogram(self.force_tangential[:, 1], bins=100)
         self.force_tangential_distribution_z = np.histogram(self.force_tangential[:, 2], bins=100)
-        self.force_tangential_distribution = np.histogram(np.linalg.norm(self.force_tangential, axis=0), bins=100)
+        self.force_tangential_distribution = np.histogram(np.linalg.norm(self.force_tangential, axis=1), bins=100)
 
     def compute_space_averages(self):
         self.force_space_average = np.mean(self.force, axis=0)
@@ -75,6 +95,43 @@ class ProcessorDump(DataProcessor):
         self.delta_space_average = np.mean(np.abs(self.delta))
         self.contact_number = len(self.area)/self.n_central_atoms*2
         
+    def store_data_tracked_grains(self, data, n_sampled_particles):
+        """
+        Store the data for a subset of the particles ids
+        """
+        #find the particle index
+        sampledIDxs = np.linspace(0, self.n_central_atoms-1, n_sampled_particles).astype('int')
+        avg_max_contact_per_particle = 10
+        data_sampled = np.zeros((avg_max_contact_per_particle*n_sampled_particles, 10))
+        # find data corresponding to the sampled particles
+        # first column force keeps the sign
+        count = 0
+        for i in range(n_sampled_particles):
+            # initilize a list for the information to store for each particle
+            
+            # select the rows corresponding to the particle
+            rows_plus = data[(data[:, 6] == sampledIDxs[i])]
+            rows_minus = data[(data[:, 7] == sampledIDxs[i])]
+
+            for j in range(rows_plus.shape[0]):
+
+                data_sampled[count, 0] = i #index of the particle the contact referes to in the zeroth column
+                data_sampled[count, 1:4] = rows_plus[j, 19:22] #contact point
+                data_sampled[count, 4:7] = rows_plus[j, 9:12] #contact force
+                data_sampled[count, 7:10] = rows_plus[j , 12:15] #contact tangential force
+                count += 1  
+
+            for j in range(rows_minus.shape[0]):
+                data_sampled[count, 0] = i
+                data_sampled[count, 1:4] = rows_minus[j, 19:22] #contact point
+                data_sampled[count, 4:7] -= rows_minus[j, 9:12]
+                data_sampled[count, 7:10] -= rows_minus[j, 12:15]
+                #store the data   
+                count += 1
+        #remove the rows with all zeros which remained empty
+        data_sampled = data_sampled[~np.all(data_sampled == 0, axis=1)]
+        return data_sampled
+    
     def plot_force_chain(self, step):
         """Plot the force chain"""
         import matplotlib.pyplot as plt
