@@ -29,7 +29,7 @@ class DataReader:
 
     def prepare_data(self, global_path):
         if self.parameter == "I":
-            self.directory = global_path + f'ap_{self.ap}_cof_{self.cof}_I_{self.value}/'
+            self.directory = global_path + f'I_{self.value}_ap_{self.ap}_cof_{self.cof}/'
         elif self.parameter == "phi":
             self.directory = global_path + f'phi_{self.value}_ap_{self.ap}_cof_{self.cof}_v_1/'
         else:

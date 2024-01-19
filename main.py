@@ -8,7 +8,7 @@ import os
 import re
 import multiprocessing
 import time as tm
-from ProcessorVtk import ProcessorVtk
+from ProcessorVtk import ProcessorVtk   
 from ProcessorDump import ProcessorDump
 from DataPlotter import DataPlotter
 from ReaderVtk import ReaderVtk
@@ -41,9 +41,9 @@ if __name__ == "__main__":
     num_processes = 8
 
     if simulation_type == "I":
-        global_path = '/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/simulations_simple_shear/parametric_studies/'
+        global_path = "/scratch/bilotto/simulations_inertial_number/parametric_studies/"
     elif simulation_type == "phi":
-        global_path = '/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/parametric_studies/'
+        global_path = "/scratch/bilotto/simulations_volume_fraction/parametric_studies/"
     else:
         raise ValueError("simulation_type must be either I or phi") 
     plt.ioff()
@@ -63,8 +63,8 @@ if __name__ == "__main__":
         print("Started multiprocessing")
         results_vtk = pool.map(to_process_vtk.process_single_step,
                             [step for step in range(to_process_vtk.n_sim)])
-    #     results_dump = pool.map(to_process_dump.process_single_step,
-    #                         [step for step in range(to_process_dump.n_sim)])
+        results_dump = pool.map(to_process_dump.process_single_step,
+                            [step for step in range(to_process_dump.n_sim)])
         
         #Extract the averages from the results
         averages_vtk = {}
@@ -76,39 +76,39 @@ if __name__ == "__main__":
             else:
                 averages_vtk[key] = np.array([result[key] for result in results_vtk])
   
-    #     averages_dump = {}
-    #     for key in results_dump[0].keys():
-    #         if key == "trackedGrainsContactData":
-    #             # list of multidimensional arrays for contact data
-    #             averages_dump[key] = [result[key] for result in results_dump]
-    #         else:
-    #             averages_dump[key] = np.array([result[key] for result in results_dump])
+        averages_dump = {}
+        for key in results_dump[0].keys():
+            if key == "trackedGrainsContactData":
+                # list of multidimensional arrays for contact data
+                averages_dump[key] = [result[key] for result in results_dump]
+            else:
+                averages_dump[key] = np.array([result[key] for result in results_dump])
 
 
     plotter = DataPlotter(ap, cof, simulation_type ,param)
-    # plotter.plot_data(averages_vtk, averages_dump)
-    # plotter.plot_eulerian_velocities(averages_vtk)
+    plotter.plot_data(averages_vtk, averages_dump)
+    plotter.plot_eulerian_velocities(averages_vtk)
 
-    # #force distrubution
+    #force distrubution
     
-    # with multiprocessing.Pool(num_processes) as pool:
-    #     print("Started multiprocessing")
-    #     results = pool.map(to_process_dump.force_single_step,
-    #                         [step for step in range(to_process_dump.n_sim)])
-    # # stack all the forces and force tangential to compute the distribution
-    # force_normal_stack = np.concatenate([result['force_normal'] for result in results])
-    # force_tangential_stack = np.concatenate([result['force_tangential'] for result in results])
+    with multiprocessing.Pool(num_processes) as pool:
+        print("Started multiprocessing")
+        results = pool.map(to_process_dump.force_single_step,
+                            [step for step in range(to_process_dump.n_sim)])
+    # stack all the forces and force tangential to compute the distribution
+    force_normal_stack = np.concatenate([result['force_normal'] for result in results])
+    force_tangential_stack = np.concatenate([result['force_tangential'] for result in results])
 
-    # force_normal_distribution = np.histogram(force_normal_stack, bins=100, density=True)
-    # force_tangential_distribution = np.histogram(force_tangential_stack, bins=100, density=True)
+    force_normal_distribution = np.histogram(force_normal_stack, bins=100, density=True)
+    force_tangential_distribution = np.histogram(force_tangential_stack, bins=100, density=True)
 
-    # plotter.plot_force_distribution(force_normal_distribution, force_tangential_distribution)
+    plotter.plot_force_distribution(force_normal_distribution, force_tangential_distribution)
 
     #analysis of the tracked grains contact data
 
     #plot the ellipsoids in 3d
     
-    plotter.plot_ellipsoids(0, averages_vtk)
+    #plotter.plot_ellipsoids(0, averages_vtk)
 
     plt.ion()
 

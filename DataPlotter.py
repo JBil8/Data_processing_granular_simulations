@@ -86,7 +86,6 @@ class DataPlotter:
 
     def plot_ellipsoids(self, step, data_vtk):
         #plot the ellipsoids in 3d
-        import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111, projection='3d')
