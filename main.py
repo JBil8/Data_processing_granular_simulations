@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import pickle
 import vtk
 import argparse
 import matplotlib.pyplot as plt
@@ -13,6 +14,7 @@ from ProcessorDump import ProcessorDump
 from DataPlotter import DataPlotter
 from ReaderVtk import ReaderVtk
 from ReaderDump import ReaderDump
+from DataExporter import DataExporter
 
 if __name__ == "__main__":
 
@@ -36,14 +38,15 @@ if __name__ == "__main__":
     #cof_list = ['0.0', '0.4','1.0', '10.0']
     #ap_list = ['1.0', '1.5', '2.0', '2.5', '3.0']
     #I_list = ['0.0001', '0.000501', '0.0025', '0.013', '0.063', '0.32']
-    #phi_list = ['0.5', '0.6', '0.7', '0.8', '0.9']
+    #phi_list = ['0.5', '0.6', '0.7', '0.8', '0.9'] 
 
     num_processes = 8
 
     if simulation_type == "I":
         global_path = "/scratch/bilotto/simulations_inertial_number/parametric_studies/"
     elif simulation_type == "phi":
-        global_path = "/scratch/bilotto/simulations_volume_fraction/parametric_studies/"
+        # global_path = "/scratch/bilotto/simulations_volume_fraction/parametric_studies/"
+        global_path = "/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/parametric_studies/"
     else:
         raise ValueError("simulation_type must be either I or phi") 
     plt.ioff()
@@ -84,6 +87,10 @@ if __name__ == "__main__":
             else:
                 averages_dump[key] = np.array([result[key] for result in results_dump])
 
+    
+    #export the data with pickle
+    #exporter = DataExporter(ap, cof, simulation_type ,param)
+    #exporter.export_with_pickle(averages_vtk, averages_dump)
 
     plotter = DataPlotter(ap, cof, simulation_type ,param)
     plotter.plot_data(averages_vtk, averages_dump)

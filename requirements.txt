@@ -4,3 +4,4 @@ matplotlib
 vtk 
 multiprocessing
 time
+pickle

@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": ["-c", "0.4", "-a", "1.0", "-t", "phi", "-v", "0.9"],
+            "args": ["-c", "0.4", "-a", "1.0", "-t", "phi", "-v", "0.5"],
             "console": "integratedTerminal"
         }
     ]
