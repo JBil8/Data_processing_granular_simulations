@@ -53,5 +53,13 @@ class DataExporter:
             delimiter=','
         )
         
+    def export_force_distribution(self, force_normal_distribution, force_tangential_distribution):
+        # export the force distribution numpy histograms to csv files for further analysis
+        with open('output_data/simple_shear_ap' + self.ap + '_cof_' + self.cof + '_' + self.parameter + '_' + self.value + '_force_normal.pkl', 'wb') as f:
+            pkl.dump(force_normal_distribution, f)
 
-        # export the tracked grains contact data
+        with open('output_data/simple_shear_ap' + self.ap + '_cof_' + self.cof + '_' + self.parameter + '_' + self.value + '_force_tangential.pkl', 'wb') as f:
+            pkl.dump(force_tangential_distribution, f)
+
+       
+
