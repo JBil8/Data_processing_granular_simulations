@@ -10,6 +10,9 @@ class DataProcessor:
         self.num_processes = 1 #default value
     @abstractmethod
     def process_data(self, num_processes):
+        """
+        Process the data in parallel
+        """
         pass
         
     @abstractmethod
@@ -17,3 +20,4 @@ class DataProcessor:
         """Processing on the data for one single step
         Calling the other methods for the processing"""
         pass
+ 

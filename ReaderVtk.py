@@ -35,11 +35,32 @@ class ReaderVtk(DataReader):
         reader.SetFileName(self.directory + self.file_list[100])
         reader.Update()
         polydata = reader.GetOutput()
+        polydatapoints = polydata.GetPointData()
         ids = np.array(polydata.GetPointData().GetArray(0))
-        sorted_idxs = np.argsort(ids)
-        self.v0 = np.array(polydata.GetPointData().GetArray(3))[sorted_idxs, :][self.n_wall_atoms:, :]
-        self.y0 = np.array(polydata.GetPoints().GetData())[sorted_idxs, :][self.n_wall_atoms:, 1]
-        
+        self.sorted_idxs = np.argsort(ids)
+        self.v0 = np.array(polydata.GetPointData().GetArray(3))[self.sorted_idxs, :][self.n_wall_atoms:, :]
+        self.y0 = np.array(polydata.GetPoints().GetData())[self.sorted_idxs, :][self.n_wall_atoms:, 1]
+        self.v_shearing = np.array(polydatapoints.GetArray("v"))[self.sorted_idxs, :][self.n_wall_atoms-1, 0]
+
+    def get_particles_volume(self):
+        reader = vtk.vtkPolyDataReader()
+        reader.SetFileName(self.directory + self.file_list[0])
+        reader.Update()
+        polydata = reader.GetOutput()
+        polydatapoints = polydata.GetPointData()
+        #get shapex array for all particles
+        shapex = np.array(polydatapoints.GetArray("shapex"))[self.sorted_idxs][self.n_wall_atoms:]
+        shapey = np.array(polydatapoints.GetArray("shapey"))[self.sorted_idxs][self.n_wall_atoms:]
+        shapez = np.array(polydatapoints.GetArray("shapez"))[self.sorted_idxs][self.n_wall_atoms:]
+        volume = 4*np.pi/3 * np.sum(shapex * shapey * shapez)
+        return volume
+    
+    def get_xz_surface(self, radius=0.00666):
+        x_length = 61*radius
+        z_length =8*radius*self.ap
+        return x_length*z_length
+
+
     def filter_relevant_files(self, prefix='shear_ellipsoids_'):
         self.file_list = [filename for filename in self.file_list if filename[len(prefix) + 1].isdigit() and filename[-1] == 'k']
 

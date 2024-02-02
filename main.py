@@ -54,6 +54,8 @@ if __name__ == "__main__":
         data_read.set_number_wall_atoms()
         data_read.get_number_central_atoms()
         data_read.get_initial_velocities()
+        particles_volume = data_read.get_particles_volume()
+        xz_surface = data_read.get_xz_surface()
         #intialize the dump reader
         data_dump = ReaderDump(cof, ap, simulation_type, param)
         data_dump.read_data(global_path, 'shear_ellipsoids_contact_data_')
@@ -76,7 +78,11 @@ if __name__ == "__main__":
                     averages_vtk[key] = np.stack([result[key] for result in results_vtk], axis=0)
                 else:
                     averages_vtk[key] = np.array([result[key] for result in results_vtk])
-    
+
+            averages_vtk['v_shearing'] = data_read.v_shearing
+            averages_vtk['phi'] = particles_volume/(xz_surface*averages_vtk['box_height'])  
+            averages_vtk.pop('box_height')
+
             averages_dump = {}
             for key in results_dump[0].keys():
                 if key == "trackedGrainsContactData":
@@ -85,13 +91,12 @@ if __name__ == "__main__":
                 else:
                     averages_dump[key] = np.array([result[key] for result in results_dump])
 
-        
         #export the data with pickle
         exporter = DataExporter(ap, cof, simulation_type ,param)
         exporter.export_with_pickle(averages_vtk, averages_dump)
 
         plotter = DataPlotter(ap, cof, simulation_type ,param)
-        plotter.plot_data(averages_vtk, averages_dump)
+        plotter.plot_data(averages_vtk, averages_dump, particles_volume, xz_surface)
         plotter.plot_eulerian_velocities(averages_vtk)
 
         #force distrubution
@@ -132,6 +137,3 @@ if __name__ == "__main__":
         print(averages_dump['trackedGrainsContactData'][0][:2, :])
         # plot ellipsois in 3d
         plotter.plot_ellipsoids(500, averages_vtk, averages_dump)
-        
-    
-

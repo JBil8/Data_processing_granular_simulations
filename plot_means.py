@@ -22,7 +22,7 @@ aspect_ratios = [1.0, 1.5, 2.0, 2.5, 3.0]
 
 if simulation_type == "I":
     values = [0.1, 0.0398, 0.0158, 0.0063, 0.0025, 0.001]
-    values = [0.1, 0.0398, 0.0158, 0.0063]
+    #values = [0.1, 0.0398, 0.0158, 0.0063]
     
 
 elif simulation_type == "phi":
@@ -38,7 +38,9 @@ avg_dict = {'Z': np.zeros((len(aspect_ratios), len(values))),
             'box_height': np.zeros((len(aspect_ratios), len(values))),
             'autocorrelation_v': np.zeros((len(aspect_ratios), len(values))),
             'mu_effective': np.zeros((len(aspect_ratios), len(values))),
-            'msd': np.zeros((len(aspect_ratios), len(values)))}
+            'msd': np.zeros((len(aspect_ratios), len(values))), 
+            'eulerian_vx': np.zeros((10, len(aspect_ratios), len(values))), 
+            'vel_fluct': np.zeros((10, len(aspect_ratios), len(values)))}
 
 for j, value in enumerate(values):
     # loop over the aspect ratios
@@ -69,7 +71,11 @@ for j, value in enumerate(values):
         avg_dict['autocorrelation_v'][i,  j] = (np.mean(data_vtk['autocorrelation_v'][int(data_vtk['autocorrelation_v'].shape[0]/2):]))
         avg_dict['mu_effective'][i,  j] = (np.mean(data_vtk['mu_effective'][int(data_vtk['mu_effective'].shape[0]/2):]))
         avg_dict['msd'][i,  j] = (slope)
+        avg_dict['eulerian_vx'][:, i,  j] = (np.mean(data_vtk['eulerian_vx'][int(data_vtk['eulerian_vx'].shape[0]/2):, :], axis=0))
+        avg_dict['vel_fluct'][:, i,  j] = (np.mean(
+            (data_vtk['eulerian_vx'][int(data_vtk['eulerian_vx'].shape[0]/2):, :]-avg_dict['eulerian_vx'][:, i,  j])**2, axis=0))
 
+# avg_dict['eulerian_vx'].shape == (10, 5, 6)
 
 font_properties = FontProperties(fname="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size=12)
 
@@ -109,22 +115,35 @@ for ax in axes[-3:]:
 axes[0].legend()
 
 fig.suptitle('cof = ' + str(cof))
-plt.show()
-fig.savefig('output_plots/simple_shear_ap' + str(ap) + '_cof_' + str(cof) + '_' + simulation_type + '_all_values.png')
+fig.savefig('output_plots/parametric_plots/simple_shear_ap' + str(ap) + '_cof_' + str(cof) + '_' + simulation_type + '_all_values.png')
+
+
+
 
 
 # plot average eulerian velocity
-fig2 = plt.figure(figsize=(10, 20))
 y = np.linspace(0, 1, 10)
-for i in range(len(values)):
-    ax = fig2.add_subplot(2, int(len(values)/2), i+1)
-    color = plt.cm.viridis(i / len(values))  # color will now be an RGBA tuple
-    #plot the eulerian velocity at the given time steps skipping the first 2 strains
-    plt.plot(data_vtk['eulerian_vx'][i+2,:], y, label = f'strain  = {i+2}', color=color)
-plt.xlabel('Vx/V')
-plt.ylabel('y/H')
-plt.legend()
-fig2.suptitle('ap = ' + str(ap) + ', cof = ' + str(cof) + ', ' + simulation_type +  '=' + str(value))
+
+# Plot the data for all values of the parameter on the same plot
+fig, axes = plt.subplots(2, len(values), figsize=(12, 50), sharey='row', gridspec_kw={'hspace': 0.2, 'wspace': 0.5})
+cmap = plt.get_cmap('viridis', len(aspect_ratios))
+
+# Flatten the 2D array of subplots into a 1D array
+axes = axes.flatten()
+
+for j, value in enumerate(values):
+    # Iterate over aspect ratios and plot on the same subplot
+    for i, ap in enumerate(aspect_ratios):
+        axes[j].plot(avg_dict['eulerian_vx'][:, i, j], y, label=f'ap = {ap}', color=cmap(i))
+        axes[j].set_xlabel('$<V_x>$')
+        axes[j+len(values)].plot(avg_dict['vel_fluct'][:, i, j], y, label=f'ap = {ap}', color=cmap(i))
+        axes[j+len(values)].set_xlabel('$(V-<V_x>)^2$')
+        
+    axes[j].set_title(f'{simulation_type} = {value}')
+
+axes[0].set_ylabel('$y/H$')
+axes[len(values)].set_ylabel('$y/H$')
+axes[0].legend()
+fig.suptitle('cof = ' + str(cof))
 plt.show()
-fig2.savefig('output_plots/simple_shear_ap' + str(ap) + '_cof_' + str(cof) + '_' + simulation_type + '_' + str(value) + 'eulerian.png')
-plt.clf()
+fig.savefig('output_plots/parametric_plots/simple_shear_ap' + str(ap) + '_cof_' + str(cof) + '_' + simulation_type + '_eulerian_statistics.png')

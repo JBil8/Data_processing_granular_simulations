@@ -34,7 +34,7 @@ class ProcessorVtk(DataProcessor):
     def process_single_step(self, step):
         """Processing on the data for one single step
         Calling the other methods for the processing
-        Concatenating the results in a single array"""
+        Results stored in a dictionary"""
 
         reader = vtk.vtkPolyDataReader()
         reader.SetFileName(self.directory+self.file_list[step])

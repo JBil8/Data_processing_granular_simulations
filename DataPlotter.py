@@ -8,7 +8,7 @@ class DataPlotter:
         self.parameter = parameter
         self.value = str(value)
     
-    def plot_data(self, data_vtk, data_dump):
+    def plot_data(self, data_vtk, data_dump, volume, surface):
         strain = np.arange(1, data_vtk['theta_x'].shape[0]+1)*20/data_vtk['theta_x'].shape[0]
         
         fig = plt.figure(figsize=(30, 10))
@@ -32,8 +32,8 @@ class DataPlotter:
         plt.ylabel('S2')
         ax = fig.add_subplot(337)
         if self.parameter == "I":
-            plt.plot(strain, data_vtk['box_height']) 
-            plt.ylabel('box height [m]')
+            plt.plot(strain, data_vtk['phi']) 
+            plt.ylabel('phi')
         else:
             plt.plot(strain, data_vtk['autocorrelation_v'])
             plt.ylabel('Autocorrelation V')
@@ -105,9 +105,7 @@ class DataPlotter:
             self.plot_single_ellipsoid(ax, center, radii, rotation_matrix)
         
         contact_points = data_dump['trackedGrainsContactData'][step][:, 1:4]
-        self.scatter_contact_point_3D(ax, contact_points)
-
-        
+        #self.scatter_contact_point_3D(ax, contact_points)
 
         ax.set_xlabel('X ')
         ax.set_ylabel('Y ')
@@ -146,12 +144,12 @@ class DataPlotter:
         # Set axis equal
         ax.set_box_aspect([np.ptp(coord) for coord in [x, y, z]])
 
-    def scatter_contact_point_3D(self, ax, points):
-        """
-        Plot a scatter of points in 3D.
+    # def scatter_contact_point_3D(self, ax, points):
+    #     """
+    #     Plot a scatter of points in 3D.
 
-        Parameters:
-        - ax: Axes3D object (matplotlib)
-        - points: 3D points (tuple or array)
-        """
-        ax.scatter(points[:, 0], points[:, 1], points[:, 2], s=4)
+    #     Parameters:
+    #     - ax: Axes3D object (matplotlib)
+    #     - points: 3D points (tuple or array)
+    #     """
+    #     ax.scatter(points[:, 0], points[:, 1], points[:, 2], s=4)

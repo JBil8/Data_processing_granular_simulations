@@ -23,6 +23,9 @@ class DataReader:
         self.file_list = None
 
     def get_number_of_time_steps(self):
+        """
+        Deduce number of time steps from the number of files and the step between them
+        """
         digits = [int(''.join(re.findall(r'\d+', filename))) for filename in self.file_list]
         self.n_sim = len(self.file_list)
         self.step = int((max(digits) - min(digits)) / (self.n_sim - 1))
@@ -41,6 +44,9 @@ class DataReader:
         pass
 
     def sort_files_by_time(self):
+        """
+        Sort the files by time
+        """
         digits = [int(''.join(re.findall(r'\d+', filename))) for filename in self.file_list]
         time_idxs = np.argsort(digits)
         self.file_list = list(np.asarray(self.file_list)[time_idxs])
