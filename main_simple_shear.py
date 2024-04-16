@@ -17,14 +17,14 @@ from ReaderDump import ReaderDump
 from DataExporter import DataExporter
 
 if __name__ == "__main__":
-
     
     parser = argparse.ArgumentParser(description='Process granular simulation.')
-    parser.add_argument('-c', '--cof', type=float, help='coefficient of friction')
+    parser.add_argument('-c', '--cof', type=float, help='coefficient of friction particles-particles')
     parser.add_argument('-a', '--ap', type=float, help='aspect ratio')
     parser.add_argument('-t', '--type', type=str, help='simulation type: either I or phi')
     parser.add_argument('-v', '--value', type=float, help='packing fraction or Inertial number depensing on the type of simulation')
     parser.add_argument('-p', '--postprocess', action='store_false', help='whether to postprocess the data or simply import the pkl file, default is True', default=True)
+    parser.add_argument('-cw', '--cof_wall', action='store_false', help='coefficient of friction particles-walls')
 
     args = parser.parse_args()
 

@@ -1,12 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 class DataPlotter:
-    def __init__(self, ap , cof, parameter, value):
+    def __init__(self, ap , cof, parameter= None, value= None,  muw=None, vwall=None, fraction=None):   
         self.ap = str(ap) 
         self.cof = str(cof)
         self.parameter = parameter
         self.value = str(value)
+        self.muw = muw
+        self.vwall = vwall
+        self.fraction = fraction
     
     def plot_data(self, data_vtk, data_dump, volume, surface):
         strain = np.arange(1, data_vtk['theta_x'].shape[0]+1)*20/data_vtk['theta_x'].shape[0]
@@ -143,6 +147,45 @@ class DataPlotter:
         ax.plot_surface(x, y, z, color=color, alpha=alpha, linewidth=0)
         # Set axis equal
         ax.set_box_aspect([np.ptp(coord) for coord in [x, y, z]])
+
+    def plot_space_averages_all_cells(self, value, quantity= 'Velocity', component = None, nx_divisions = 40, ny_divisions=6):
+            """
+            Function to plot the space averages of the velocities in eulerian cells
+            """
+    
+            if component == 0:
+                axis_name = 'x'
+            elif component == 1:
+                axis_name = 'y'
+            elif component == 2:
+                axis_name = 'z'
+
+
+            from matplotlib import pyplot as plt
+            os.makedirs("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + "_vw_" + str(self.vwall), exist_ok=True)
+            os.chdir("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + "_vw_" + str(self.vwall))
+
+
+            # Plot x component of the velocity
+            plt.figure(figsize=(20, 12))      
+            plt.xlabel('Grid cell x')
+            plt.ylabel('Grid cell y')
+            #plt.show()
+            if component is None:
+                plt.imshow(value.T, cmap='plasma', origin='lower', extent=[0, nx_divisions, 0, ny_divisions])
+                plt.colorbar(label='$'+ quantity[0] + '$')  # Set ticks for colorbar
+                plt.title('Eulerian ' + quantity)
+                plt.savefig("eulerian_" + "frac_" + str(self.fraction) + "_" + quantity + ".png")
+            
+            else:
+                plt.imshow(value[:,:,component].T, cmap='plasma', origin='lower', extent=[0, nx_divisions, 0, ny_divisions])
+                plt.colorbar(label='$'+ quantity[0]+ '_' + axis_name + '$')  # Set ticks for colorbar
+                plt.title('Eulerian ' + axis_name+ ' ' + quantity)
+                plt.savefig("eulerian_" + "frac_" + str(self.fraction) + "_" + quantity + "_" + axis_name + ".png")
+            
+                        # save figure to create gif later include the name of the timestep
+            plt.close()
+            os.chdir("..")
 
     # def scatter_contact_point_3D(self, ax, points):
     #     """

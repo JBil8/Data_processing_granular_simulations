@@ -58,7 +58,6 @@ class ProcessorDump(DataProcessor):
     def force_single_step(self, step):
         """Processing on the data for one single step
         Calling the other methods for the processing"""
-
         data = np.loadtxt(self.directory+self.file_list[step], skiprows=9)
         #excluding contacts between wall particles
         first_col_check = (data[:,6] > self.n_wall_atoms)
@@ -132,24 +131,43 @@ class ProcessorDump(DataProcessor):
         data_sampled = data_sampled[~np.all(data_sampled == 0, axis=1)]
         return data_sampled
     
-    def plot_force_chain(self, step):
+    def plot_force_chain(self, step, phi):
         """Plot the force chain"""
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         data = np.loadtxt(self.directory+self.file_list[step], skiprows=9)
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111, projection='3d')
+        force_intensity = []
         for i in range(len(data)):
-            if data[i, 6] > self.n_wall_atoms and data[i, 7] > self.n_wall_atoms and data[i, 8] != 1:
-                ax.plot([data[i, 0], data[i,3]], [data[i, 2], data[i,5]], [data[i, 1], data[i,4]], linestyle='-', color='k')
+            if data[i, 6] > self.n_wall_atoms and data[i, 7] > self.n_wall_atoms:
+                if np.linalg.norm(data[i, 0:3]-data[i, 3:6]) < 0.15:
+                    force_intensity.append(np.linalg.norm(data[i, 9:12]))
+
+        count = 0
+        max_force = max(force_intensity)
+        for i in range(len(data)):
+            if data[i, 6] > self.n_wall_atoms and data[i, 7] > self.n_wall_atoms:
+                # if distance between particles is smaller than certain value
+                if np.linalg.norm(data[i, 0:3]-data[i, 3:6]) < 0.15:
+                    ax.plot([data[i, 0], data[i,3]], [data[i, 1], data[i,4]], [data[i, 2], data[i,5]], linestyle='-', color='k', linewidth=2*force_intensity[count]/max_force)
+                    count += 1
         # Set equal axis scaling
         ax.set_box_aspect([np.ptp(coord) for coord in [ax.get_xlim(), ax.get_ylim(), ax.get_zlim()]])
-    
-        ax.set_xlabel('X ')
-        ax.set_ylabel('Z ')
-        ax.set_zlabel('Y ')
-        ax.set_title('Force chains, ap='+str(self.data_reader.ap)+', cof='+str(self.data_reader.cof)+', phi='+str(self.data_reader.parameter)+', step='+str(step))
 
-        plt.savefig('output_plots/force_chain'+str(step)+'.png')
+        # set view to xy plane
+        ax.view_init(90, -90)
+
+        # put only a few values per axis and big font
+        #ax.set_xticks([])
+        #ax.set_yticks([])
+        ax.set_zticks([])     
+        
+        ax.set_xlabel('X ')
+        ax.set_ylabel('Y ')
+        ax.set_zlabel('Z ')
+        ax.set_title('Force chains, ap='+str(self.data_reader.ap)+', cof='+str(self.data_reader.cof)+', phi='+str(phi)+', step='+str(step))
+
+        plt.savefig('output_plots/force_chain_ap_'+str(self.data_reader.ap)+', cof_'+str(self.data_reader.cof)+'phi='+str(phi)+'step='+ str(step)+ '.png')
         plt.show()
         plt.close()

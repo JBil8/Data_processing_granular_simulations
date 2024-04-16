@@ -5,7 +5,7 @@ import vtk
 from abc import ABC, abstractmethod
 
 class DataReader:
-    def __init__(self, cof, ap, parameter, value):
+    def __init__(self, cof, ap, parameter=None, value=None, muw=None, vwall=None, fraction=None):
         """
         Specify the parameters that vary in the parametric study
         cof: coefficient of friction
@@ -17,6 +17,9 @@ class DataReader:
         self.ap = ap
         self.parameter = parameter
         self.value = value
+        self.muw = muw
+        self.vwall = vwall
+        self.fraction = fraction
         self.n_sim = None
         self.step = None
         self.directory = None
@@ -29,6 +32,10 @@ class DataReader:
         digits = [int(''.join(re.findall(r'\d+', filename))) for filename in self.file_list]
         self.n_sim = len(self.file_list)
         self.step = int((max(digits) - min(digits)) / (self.n_sim - 1))
+
+    def prepare_data_obstruction(self, global_path):
+        self.directory = global_path + f'alpha_{self.ap}_mup_{self.cof}_muw_{self.muw}_v_{self.vwall}_frac_{self.fraction}/'
+        self.file_list = os.listdir(self.directory)
 
     def prepare_data(self, global_path):
         if self.parameter == "I":
