@@ -7,10 +7,10 @@
             "request": "launch",
             "program": "${file}",
             "args": [
-                "-c", "0.3",
+                "-c", "0.6",
                 "-a", "3.0",
                 "-cw", "1.0",
-                "-vw", "1.0", 
+                "-vw", "20.0", 
                 "-f", "2",],
             "console": "integratedTerminal"
         },

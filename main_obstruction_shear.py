@@ -91,14 +91,16 @@ if __name__ == "__main__":
     #Extract the averages from the results
         averages = {'v': np.zeros_like(results_vtk[0]['v']),
                     'F': np.zeros_like(results_vtk[0]['F']),
-                    'phi': np.zeros_like(results_vtk[0]['phi'])}
-        counts = {'v': 0, 'F': 0, 'phi': 0}
+                    'phi': np.zeros_like(results_vtk[0]['phi']), 
+                    'theta_x' : np.zeros_like(results_vtk[0]['theta_x']),
+                    'theta_z' : np.zeros_like(results_vtk[0]['theta_z']),}
+
             # Compute cumulative sums and counts
         for step_data in results_vtk:
             for key in averages.keys():
+                step_data[key] = np.nan_to_num(step_data[key], nan=0.0)
                 averages[key] += step_data[key]  # Add values to cumulative sum
-                counts[key] += 1  # Increment count
-
+                
        # Compute averages
         for key in averages.keys():
             averages[key] /= n_sim  # Divide cumulative sum by count to get average
@@ -106,8 +108,14 @@ if __name__ == "__main__":
     plotter = DataPlotter(ap, cof, muw = muw, vwall =vwall, fraction=fraction_obstruction)
     plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
     plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    
     plotter.plot_space_averages_all_cells(averages['phi'], quantity='Volume fraction', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-
+    plotter.plot_space_averages_all_cells(averages['theta_x'], quantity='Theta_x', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['theta_z'], quantity='Thetat_z', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
     averages['v_shearing'] = data_read.v_shearing
     #         averages_vtk['phi'] = particles_volume/(xz_surface*averages_vtk['box_height'])  
     #         averages_vtk.pop('box_height')

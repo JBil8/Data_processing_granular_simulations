@@ -92,7 +92,9 @@ class ProcessorEulerianVtk(DataProcessor):
         #self.plot_space_averages_all_cells(step, self.velocities_space_average, 'Velocity', 0)
         grid_dict = {'v': self.velocities_space_average,
                     "F": self.forces_space_average, 
-                    "phi": self.local_phi}
+                    "phi": self.local_phi, 
+                    "theta_x": self.theta_x,
+                    "theta_z": self.theta_z}
         return grid_dict
 
     def make_2D_grid(self, nx_divisions = 40):
@@ -123,20 +125,18 @@ class ProcessorEulerianVtk(DataProcessor):
         self.shapez = np.array(self.polydatapoints.GetArray("shapez"))[self.n_wall_atoms:]
         self.volume = 4/3*np.pi*self.shapex*self.shapey*self.shapez
         self.orientations = np.array(self.polydatapoints.GetArray("TENSOR"))[self.ids, :][self.n_wall_atoms:, :].reshape(self.n_central_atoms,3,3)
-        starting_array = np.array([0,0,1])
-        #self.angle_flow 
-
-
+        self.compute_alignment()
 
         scaled_factor_x = self.box_x/(self.nx_divisions)
-        scaled_coor_x = np.floor((self.coor[:,0]+self.box_x/2*0.92)/scaled_factor_x)
+        scaled_coor_x = np.floor((self.coor[:,0]+self.box_x/2*0.96)/scaled_factor_x)
         scaled_factor_y = self.box_y/(self.ny_divisions)
         scaled_coor_y = np.floor((self.coor[:,1]-self.lower_bound_y)/scaled_factor_y)
         # for each particle, find the grid cell it belongs to
         for j in range(self.n_central_atoms):
             i = int(scaled_coor_x[j])
             k = int(scaled_coor_y[j])
-            self.grid_data[i*self.ny_divisions+k] = np.append(self.grid_data[i*self.ny_divisions+k], j)
+            if i < self.nx_divisions and k < self.ny_divisions:
+                self.grid_data[i*self.ny_divisions+k] = np.append(self.grid_data[i*self.ny_divisions+k], j)
     
     def compute_space_averages_per_cell(self):
         """
@@ -147,16 +147,16 @@ class ProcessorEulerianVtk(DataProcessor):
         self.forces_space_average = np.zeros((self.nx_divisions, self.ny_divisions, 3))
         #self.alignment_in_flow = np.zeros((self.nx_divisions, self.ny_divisions))
         self.local_phi = np.zeros((self.nx_divisions, self.ny_divisions))
-        
+        self.theta_x = np.zeros((self.nx_divisions, self.ny_divisions))
+        self.theta_z = np.zeros((self.nx_divisions, self.ny_divisions))
         for i in range(self.nx_divisions):
             for k in range(self.ny_divisions):
                 self.velocities_space_average[i, k] = np.mean(self.velocities[self.grid_data[i*self.ny_divisions+k], :], axis=0)
                 self.forces_space_average[i, k] = np.mean(self.forces_particles[self.grid_data[i*self.ny_divisions+k], :], axis=0)
                 self.local_phi[i, k] = np.sum(self.volume[self.grid_data[i*self.ny_divisions+k]])/(self.cell_volume)
-    
-
-        
-
+                self.theta_x[i, k] = np.mean(self.flow_angle[self.grid_data[i*self.ny_divisions+k]])
+                self.theta_z[i, k] = np.mean(self.out_flow_angle[self.grid_data[i*self.ny_divisions+k]])
+      
     def plot_space_averages_all_cells(self, step, value, quantity= 'Velocity', component = 0, vmin=-0.2, vmax=0.8):
         """
         Function to plot the space averages of the velocities in eulerian cells
@@ -235,18 +235,6 @@ class ProcessorEulerianVtk(DataProcessor):
         autocorrelation_vel = np.mean(np.sum((self.v0-np.mean(self.v0))*(self.velocities-np.mean(self.velocities)), axis=1))
         return autocorrelation_vel
 
-    def compute_space_averages(self):
-        """
-        Compute the space averages of the velocities, angular velocities and forces
-        """
-        self.velocities_space_average = np.mean(self.velocities, axis=0)
-        self.vx_space_average = np.mean(self.velocities[:,0])
-        self.omegas_space_average = np.mean(self.omegas, axis=0)
-        self.omegaz_space_average = np.mean(self.omegas[:, 2])
-        self.shearing_force = np.mean(self.forces_walls[:,0]) #only x component of the force 
-        self.vertical_force = np.mean(self.forces_walls[:,1]) #only y component of the force
-        self.effective_friction = self.shearing_force/self.vertical_force
-    
     def compute_box_height(self):
         """
         Compute the height of the box from the maximum y coordinate of the particles
@@ -305,7 +293,8 @@ class ProcessorEulerianVtk(DataProcessor):
         # plt.xlabel('theta')
         # plt.ylabel('P(theta)')
         # plt.show()
-
+        self.flow_angle = np.rad2deg(flow_angle)
+        self.out_flow_angle = np.rad2deg(out_flow_angle)
 
         self.alignment_out_of_flow = np.mean(out_flow_angle) #maybe also compute time average
         self.alignment_space_average = np.mean(flow_angle)
