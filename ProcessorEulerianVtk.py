@@ -76,7 +76,7 @@ class ProcessorEulerianVtk(DataProcessor):
     #                 "trackedGrainsShapeZ": trackedGrainsShapeZ}
         
     #     return avg_dict
-    def process_single_step(self, step, nx_divisions=40, ny_divisions=6):
+    def process_single_step(self, step, nx_divisions=40, ny_divisions=6, dx=0.1, dy=0.1):
         """Processing on the data for one single step
         Calling the other methods for the processing
         Results stored in a dictionary"""
@@ -86,30 +86,72 @@ class ProcessorEulerianVtk(DataProcessor):
         reader.Update()
         self.polydata = reader.GetOutput()
         self.polydatapoints = self.polydata.GetPointData()
-        self.make_2D_grid(nx_divisions)
+        
+        self.grid_data = [np.array([], dtype=int) for _ in range(nx_divisions * ny_divisions)]
+        self.nx_divisions = nx_divisions
+        self.ny_divisions = ny_divisions
+        self.cell_volume = dx*dy*self.box_z
+
         self.get_ids_particles_in_grid()
         self.compute_space_averages_per_cell()
+        self.find_max_min_velocity()
+        self.find_max_min_angle_x()
+        self.find_max_min_force()
         #self.plot_space_averages_all_cells(step, self.velocities_space_average, 'Velocity', 0)
         grid_dict = {'v': self.velocities_space_average,
                     "F": self.forces_space_average, 
                     "phi": self.local_phi, 
                     "theta_x": self.theta_x,
-                    "theta_z": self.theta_z}
-        return grid_dict
-
-    def make_2D_grid(self, nx_divisions = 40):
-        nx_divisions = int(nx_divisions)
-        ny_divisions = math.ceil(nx_divisions*self.box_y/self.box_x)
-
-        self.grid_data = np.zeros((nx_divisions, ny_divisions))
-        self.cell_volume = self.box_x*self.box_y*self.box_z/(nx_divisions*ny_divisions) #volume of each cell
+                    "theta_z": self.theta_z, 
+                    "stress": self.stress_space_average}
         
-        #list of arrays of ids
-        self.nx_divisions = nx_divisions
-        self.ny_divisions = ny_divisions
-        self.grid_data = [np.array([], dtype=int) for _ in range(nx_divisions * ny_divisions)]
+        max_values = {'max_vx': self.max_vx,
+                    'max_vy': self.max_vy,
+                    'max_vz': self.max_vz,
+                    'max_theta_x': self.max_theta_x,
+                    'max_fx': self.max_fx,
+                    'max_fy': self.max_fy,
+                    'max_fz': self.max_fz}
         
-        return ny_divisions
+        min_values = {'min_vx': self.min_vx,
+                    'min_vy': self.min_vy,
+                    'min_vz': self.min_vz,
+                    'min_theta_x': self.min_theta_x,
+                    'min_fx': self.min_fx,
+                    'min_fy': self.min_fy,
+                    'min_fz': self.min_fz}
+        
+
+        return grid_dict, max_values, min_values
+
+    def find_max_min_velocity(self):
+        """
+        Find the maximum and minimum velocity
+        """
+        self.max_vx = np.max(self.velocities_space_average[:, :, 0])
+        self.min_vx = np.min(self.velocities_space_average[:, :, 0])
+        self.max_vy = np.max(self.velocities_space_average[:, :, 1])
+        self.min_vy = np.min(self.velocities_space_average[:, :, 1])
+        self.max_vz = np.max(self.velocities_space_average[:, :, 2])
+        self.min_vz = np.min(self.velocities_space_average[:, :, 2])
+
+    def find_max_min_angle_x(self):
+        """
+        Find the maximum and minimum angle in x
+        """
+        self.max_theta_x = np.max(self.theta_x)
+        self.min_theta_x = np.min(self.theta_x)
+
+    def find_max_min_force(self):
+        """
+        Find the maximum and minimum force
+        """
+        self.max_fx = np.max(self.forces_space_average[:, :, 0])
+        self.min_fx = np.min(self.forces_space_average[:, :, 0])
+        self.max_fy = np.max(self.forces_space_average[:, :, 1])
+        self.min_fy = np.min(self.forces_space_average[:, :, 1])
+        self.max_fz = np.max(self.forces_space_average[:, :, 2])
+        self.min_fz = np.min(self.forces_space_average[:, :, 2])
 
     def get_ids_particles_in_grid(self):
         """
@@ -125,10 +167,12 @@ class ProcessorEulerianVtk(DataProcessor):
         self.shapez = np.array(self.polydatapoints.GetArray("shapez"))[self.n_wall_atoms:]
         self.volume = 4/3*np.pi*self.shapex*self.shapey*self.shapez
         self.orientations = np.array(self.polydatapoints.GetArray("TENSOR"))[self.ids, :][self.n_wall_atoms:, :].reshape(self.n_central_atoms,3,3)
+        self.stress = np.concatenate((np.array(self.polydatapoints.GetArray("c_stressAtom[1-3]")), np.array(self.polydatapoints.GetArray("c_stressAtom[4-6]"))), axis=1)
+
         self.compute_alignment()
 
         scaled_factor_x = self.box_x/(self.nx_divisions)
-        scaled_coor_x = np.floor((self.coor[:,0]+self.box_x/2*0.96)/scaled_factor_x)
+        scaled_coor_x = np.floor((self.coor[:,0]+self.box_x/2)/scaled_factor_x)
         scaled_factor_y = self.box_y/(self.ny_divisions)
         scaled_coor_y = np.floor((self.coor[:,1]-self.lower_bound_y)/scaled_factor_y)
         # for each particle, find the grid cell it belongs to
@@ -149,6 +193,7 @@ class ProcessorEulerianVtk(DataProcessor):
         self.local_phi = np.zeros((self.nx_divisions, self.ny_divisions))
         self.theta_x = np.zeros((self.nx_divisions, self.ny_divisions))
         self.theta_z = np.zeros((self.nx_divisions, self.ny_divisions))
+        self.stress_space_average = np.zeros((self.nx_divisions, self.ny_divisions, 6))
         for i in range(self.nx_divisions):
             for k in range(self.ny_divisions):
                 self.velocities_space_average[i, k] = np.mean(self.velocities[self.grid_data[i*self.ny_divisions+k], :], axis=0)
@@ -156,7 +201,7 @@ class ProcessorEulerianVtk(DataProcessor):
                 self.local_phi[i, k] = np.sum(self.volume[self.grid_data[i*self.ny_divisions+k]])/(self.cell_volume)
                 self.theta_x[i, k] = np.mean(self.flow_angle[self.grid_data[i*self.ny_divisions+k]])
                 self.theta_z[i, k] = np.mean(self.out_flow_angle[self.grid_data[i*self.ny_divisions+k]])
-      
+                self.stress_space_average[i, k] =  np.mean(self.stress[self.grid_data[i*self.ny_divisions+k], :], axis=0)
     def plot_space_averages_all_cells(self, step, value, quantity= 'Velocity', component = 0, vmin=-0.2, vmax=0.8):
         """
         Function to plot the space averages of the velocities in eulerian cells
@@ -168,7 +213,13 @@ class ProcessorEulerianVtk(DataProcessor):
             axis_name = 'y'
         elif component == 2:
             axis_name = 'z'
-
+        elif component == 3:
+            axis_name = 'xy'
+        elif component == 4:
+            axis_name = 'yz'
+        elif component == 5:
+            axis_name = 'xz'
+    
         from matplotlib import pyplot as plt
         
         # Plot x component of the velocity

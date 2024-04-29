@@ -159,6 +159,12 @@ class DataPlotter:
                 axis_name = 'y'
             elif component == 2:
                 axis_name = 'z'
+            elif component == 3:
+                axis_name = 'xy'
+            elif component == 4:
+                axis_name = 'yz'    
+            elif component == 5:
+                axis_name = 'xz'
 
 
             from matplotlib import pyplot as plt

@@ -3,6 +3,7 @@ import re
 import numpy as np
 import vtk 
 from DataReader import DataReader
+import math 
 
 class ReaderVtk(DataReader):
     def __init__(self, cof, ap, parameter=None, value=None, muw=None, vwall=None, fraction=None):
@@ -87,6 +88,15 @@ class ReaderVtk(DataReader):
         self.box_y = bounds[3] - bounds[2]
         self.box_z = bounds[5] - bounds[4]
         self.lower_bound_y = bounds[2]
+
+    def make_2D_grid(self, nx_divisions = 40):
+        nx_divisions = int(nx_divisions)
+        ny_divisions = math.ceil(nx_divisions*self.box_y/self.box_x)
+
+        #distance of each cell in x and y
+        dx = self.box_x/nx_divisions
+        dy = self.box_y/ny_divisions
+        return ny_divisions, dx, dy
 
     def read_data(self, global_path, prefix):
         if self.parameter== None:
