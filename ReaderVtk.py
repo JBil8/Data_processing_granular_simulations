@@ -6,8 +6,8 @@ from DataReader import DataReader
 import math 
 
 class ReaderVtk(DataReader):
-    def __init__(self, cof, ap, parameter=None, value=None, muw=None, vwall=None, fraction=None):
-        super().__init__(cof, ap, parameter, value, muw, vwall, fraction)
+    def __init__(self, cof, ap, parameter=None, value=None, muw=None, vwall=None, fraction=None, phi = None, I = None):
+        super().__init__(cof, ap, parameter, value, muw, vwall, fraction, phi)
         self.n_wall_atoms = None
         self.n_central_atoms = None
 
@@ -91,7 +91,8 @@ class ReaderVtk(DataReader):
 
     def make_2D_grid(self, nx_divisions = 40):
         nx_divisions = int(nx_divisions)
-        ny_divisions = math.ceil(nx_divisions*self.box_y/self.box_x)
+        # ny_divisions = math.ceil(nx_divisions*self.box_y/self.box_x) # square cells
+        ny_divisions = 6
 
         #distance of each cell in x and y
         dx = self.box_x/nx_divisions
@@ -100,7 +101,7 @@ class ReaderVtk(DataReader):
 
     def read_data(self, global_path, prefix):
         if self.parameter== None:
-            self.prepare_data_obstruction(global_path)
+            self.prepare_data_obstruction(global_path, reverse_flag=False)
         else:
             self.prepare_data(global_path)
         self.filter_relevant_files(prefix)

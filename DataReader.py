@@ -5,7 +5,7 @@ import vtk
 from abc import ABC, abstractmethod
 
 class DataReader:
-    def __init__(self, cof, ap, parameter=None, value=None, muw=None, vwall=None, fraction=None):
+    def __init__(self, cof, ap, parameter=None, value=None, muw=None, vwall=None, fraction=None, phi = None, I = None):
         """
         Specify the parameters that vary in the parametric study
         cof: coefficient of friction
@@ -20,6 +20,7 @@ class DataReader:
         self.muw = muw
         self.vwall = vwall
         self.fraction = fraction
+        self.phi = phi
         self.n_sim = None
         self.step = None
         self.directory = None
@@ -33,9 +34,14 @@ class DataReader:
         self.n_sim = len(self.file_list)
         self.step = int((max(digits) - min(digits)) / (self.n_sim - 1))
 
-    def prepare_data_obstruction(self, global_path):
-        self.directory = global_path + f'alpha_{self.ap}_mup_{self.cof}_muw_{self.muw}_v_{self.vwall}_frac_{self.fraction}/'
+    def prepare_data_obstruction(self, global_path, reverse_flag=False):
+        if reverse_flag:
+            self.directory = global_path + f'reverse_alpha_{self.ap}_mup_{self.cof}_muw_{self.muw}_v_{self.vwall}_frac_{self.fraction}/'
+        else:
+            self.directory = global_path + f'alpha_{self.ap}_mup_{self.cof}_muw_{self.muw}_v_{self.vwall}_phi_{self.phi}_frac_{self.fraction}/'
+        print(self.phi)
         self.file_list = os.listdir(self.directory)
+
 
     def prepare_data(self, global_path):
         if self.parameter == "I":
@@ -58,3 +64,19 @@ class DataReader:
         time_idxs = np.argsort(digits)
         self.file_list = list(np.asarray(self.file_list)[time_idxs])
 
+    def get_data(self):
+        """
+        Read the data from the csv files
+        """
+        data = np.genfromtxt(self.directory + "time_series/data.csv", delimiter=',', skip_header=1)
+        self.time = data[:, 0]
+        Fx = data[:, 1]
+        Fy = data[:, 2]
+        Fz = data[:, 3]
+        tke = data[:, 4] #translational kinetic energy
+        rke = data[:, 5] #rotational kinetic energy  
+
+        return self.time, Fx, Fy, Fz, tke, rke   
+    
+    def set_reverse_flag(self):
+        self.reverse_flag = True

@@ -193,6 +193,35 @@ class DataPlotter:
             plt.close()
             os.chdir("..")
 
+    def plot_time_series_forces(self, time, fx, fy, fz):
+        """
+        Function to plot the time series of the given quantity
+        """
+        plt.figure(figsize=(20, 12))
+        plt.plot(time, fx, label='Fx')
+        plt.plot(time, fy, label='Fy')
+        plt.plot(time, fz, label='Fz')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Force [N]')
+        plt.legend()
+        plt.title('fraction = ' + str(self.fraction) + ', ap = ' + str(self.ap) + ', cof = ' + str(self.cof) + ', muw = ' + str(self.muw) + ', vwall = ' + str(self.vwall))
+        plt.savefig("time_series_force_" + ', ap = ' + str(self.ap) + ', cof = ' + str(self.cof) + ', muw = ' + str(self.muw) + ', vwall = ' + str(self.vwall) + ".png")
+        plt.show()
+
+    def plot_time_series_energy(self, time, tke, rke):
+        """
+        Function to plot the time series of the given quantity
+        """
+        plt.figure(figsize=(20, 12))
+        plt.plot(time, tke, label='TKE')
+        plt.plot(time, rke, label='RKE')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Energy [J]')
+        plt.legend()
+        plt.title('fraction = ' + str(self.fraction) + ', ap = ' + str(self.ap) + ', cof = ' + str(self.cof) + ', muw = ' + str(self.muw) + ', vwall = ' + str(self.vwall))
+        plt.savefig("time_series_energy_" + ', ap = ' + str(self.ap) + ', cof = ' + str(self.cof) + ', muw = ' + str(self.muw) + ', vwall = ' + str(self.vwall) + ".png")
+        plt.show()
+
     # def scatter_contact_point_3D(self, ax, points):
     #     """
     #     Plot a scatter of points in 3D.
