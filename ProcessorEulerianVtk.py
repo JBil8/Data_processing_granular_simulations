@@ -196,12 +196,23 @@ class ProcessorEulerianVtk(DataProcessor):
         self.stress_space_average = np.zeros((self.nx_divisions, self.ny_divisions, 6))
         for i in range(self.nx_divisions):
             for k in range(self.ny_divisions):
-                self.velocities_space_average[i, k] = np.mean(self.velocities[self.grid_data[i*self.ny_divisions+k], :], axis=0)
-                self.forces_space_average[i, k] = np.mean(self.forces_particles[self.grid_data[i*self.ny_divisions+k], :], axis=0)
-                self.local_phi[i, k] = np.sum(self.volume[self.grid_data[i*self.ny_divisions+k]])/(self.cell_volume)
-                self.theta_x[i, k] = np.mean(self.flow_angle[self.grid_data[i*self.ny_divisions+k]])
-                self.theta_z[i, k] = np.mean(self.out_flow_angle[self.grid_data[i*self.ny_divisions+k]])
-                self.stress_space_average[i, k] =  np.mean(self.stress[self.grid_data[i*self.ny_divisions+k], :], axis=0)
+                #check cell is not empty before computing the mean
+                if len(self.grid_data[i*self.ny_divisions+k]) > 0:
+                    self.velocities_space_average[i, k] = np.mean(self.velocities[self.grid_data[i*self.ny_divisions+k], :], axis=0)
+                    self.forces_space_average[i, k] = np.mean(self.forces_particles[self.grid_data[i*self.ny_divisions+k], :], axis=0)
+                    self.local_phi[i, k] = np.sum(self.volume[self.grid_data[i*self.ny_divisions+k]])/(self.cell_volume)
+                    self.theta_x[i, k] = np.mean(self.flow_angle[self.grid_data[i*self.ny_divisions+k]])
+                    self.theta_z[i, k] = np.mean(self.out_flow_angle[self.grid_data[i*self.ny_divisions+k]])
+                    self.stress_space_average[i, k] =  np.mean(self.stress[self.grid_data[i*self.ny_divisions+k], :], axis=0)
+                else:
+                    self.velocities_space_average[i, k] = np.zeros(3)
+                    self.forces_space_average[i, k] = np.zeros(3)
+                    self.local_phi[i, k] = 0
+                    self.theta_x[i, k] = 0
+                    self.theta_z[i, k] = 0
+                    self.stress_space_average[i, k] = np.zeros(6)
+
+
     def plot_space_averages_all_cells(self, step, value, quantity= 'Velocity', component = 0, vmin=-0.2, vmax=0.8):
         """
         Function to plot the space averages of the velocities in eulerian cells

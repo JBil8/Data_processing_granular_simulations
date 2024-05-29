@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 class DataPlotter:
-    def __init__(self, ap , cof, parameter= None, value= None,  muw=None, vwall=None, fraction=None):   
+    def __init__(self, ap , cof, parameter= None, value= None,  muw=None, vwall=None, fraction=None, phi = None):   
         self.ap = str(ap) 
         self.cof = str(cof)
         self.parameter = parameter
@@ -11,6 +11,7 @@ class DataPlotter:
         self.muw = muw
         self.vwall = vwall
         self.fraction = fraction
+        self.phi = phi
     
     def plot_data(self, data_vtk, data_dump, volume, surface):
         strain = np.arange(1, data_vtk['theta_x'].shape[0]+1)*20/data_vtk['theta_x'].shape[0]
@@ -168,9 +169,10 @@ class DataPlotter:
 
 
             from matplotlib import pyplot as plt
-            os.makedirs("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + "_vw_" + str(self.vwall), exist_ok=True)
-            os.chdir("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + "_vw_" + str(self.vwall))
-
+            os.makedirs("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + 
+                        "_vw_" + str(self.vwall), "_phi" + str(self.phi) + "_frac_" + str(self.fraction), exist_ok=True)
+            os.chdir("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + 
+                        "_vw_" + str(self.vwall), "_phi" + str(self.phi) + "_frac_" + str(self.fraction))
 
             # Plot x component of the velocity
             plt.figure(figsize=(20, 12))      

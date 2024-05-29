@@ -61,16 +61,16 @@ if __name__ == "__main__":
     full_postprocess = args.postprocess
     fraction_obstruction = args.fraction_obstruction
     phi_in = args.volume_fraction
-    global_path = "/home/jacopo/Documents/PhD_research/Liggghts_simulations/test_simulations/shearing_stl/"
+    global_path = "/scratch/bilotto/simulations_obstruction_stl/shearing/"
     #global_path = "/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/"
 
-    num_processes = 1
+    num_processes = 16
 
     if full_postprocess == True:
 
         plt.ioff()
         #initialize the vtk reader
-        nx_divisions = 10
+        nx_divisions = 40
         data_read_vtk = ReaderVtk(cof, ap, muw=muw, vwall=vwall, fraction = fraction_obstruction, phi= phi_in)
         #data_read_vtk.set_reverse_flag() #comment if obstruction is still
         data_read_vtk.read_data(global_path, 'shearing_')
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         div_v = math_operations.compute_divergence(averages['v'][:, :, 0], averages['v'][:, :, 1])
         pressure = -(averages['stress'][:,:,0]+averages['stress'][:,:,1] + averages['stress'][:,:,2])/3
 
-    plotter = DataPlotter(ap, cof, muw = muw, vwall =vwall, fraction=fraction_obstruction)
+    plotter = DataPlotter(ap, cof, muw = muw, vwall =vwall, fraction=fraction_obstruction, phi = phi_in)
     plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
     plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
     plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
@@ -186,6 +186,8 @@ if __name__ == "__main__":
     plotter.plot_space_averages_all_cells(averages['theta_z'], quantity='Thetat_z', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
     averages['v_shearing'] = data_read_vtk.v_shearing
     
+    print(averages.keys())
+
     # export the data with pickle for further analysis with appropriate name
     data_export = DataExporter(ap, cof, muw=muw, vwall=vwall, fraction = fraction_obstruction, phi= phi_in)
     data_export.export_with_pickle_obstructed(averages, msd)
