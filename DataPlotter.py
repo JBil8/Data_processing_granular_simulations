@@ -168,11 +168,12 @@ class DataPlotter:
                 axis_name = 'xz'
 
 
-            from matplotlib import pyplot as plt
-            os.makedirs("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + 
-                        "_vw_" + str(self.vwall), "_phi" + str(self.phi) + "_frac_" + str(self.fraction), exist_ok=True)
-            os.chdir("eulerian_ap_" + str(self.ap) + "_mup_" + str(self.cof) + "_muw_" + str(self.muw) + 
-                        "_vw_" + str(self.vwall), "_phi" + str(self.phi) + "_frac_" + str(self.fraction))
+            directory_name = (f"eulerian_ap_{self.ap}_mup_{self.cof}_muw_{self.muw}_"
+                f"vw_{self.vwall}_phi_{self.phi}_frac_{self.fraction}_"
+                f"nx_{nx_divisions}_ny_{ny_divisions}")
+
+            os.makedirs(directory_name, exist_ok=True)
+            os.chdir(directory_name)
 
             # Plot x component of the velocity
             plt.figure(figsize=(20, 12))      
