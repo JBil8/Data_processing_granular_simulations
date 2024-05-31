@@ -39,7 +39,6 @@ class DataReader:
             self.directory = global_path + f'reverse_alpha_{self.ap}_mup_{self.cof}_muw_{self.muw}_v_{self.vwall}_frac_{self.fraction}/'
         else:
             self.directory = global_path + f'alpha_{self.ap}_mup_{self.cof}_muw_{self.muw}_v_{self.vwall}_phi_{self.phi}_frac_{self.fraction}/'
-        print(self.phi)
         self.file_list = os.listdir(self.directory)
 
 

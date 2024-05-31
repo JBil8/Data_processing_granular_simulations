@@ -22,21 +22,6 @@ from Math_operations_grid import MathOperationsGrid
 def process_single_step_wrapper(args):
     return to_process_vtk.process_single_step(args)
 
-def compute_eulerian_msd(results_vtk, averages, n_sim):
-    # Initialize dictionary to store cumulative square deviations
-    square_deviations = {key: np.zeros_like(results_vtk[0][key]) for key in averages.keys()}
-
-    # Compute cumulative square deviations
-    for step_data in results_vtk:
-        for key in averages.keys():
-            deviation = step_data[key] - averages[key]
-            squared_deviation = deviation ** 2
-            square_deviations[key] += squared_deviation
-
-    # Divide cumulative square deviations by n_sim to get mean square deviation
-    mean_square_deviations = {key: value / n_sim for key, value in square_deviations.items()}
-    return mean_square_deviations
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Process granular simulation.')
@@ -61,10 +46,11 @@ if __name__ == "__main__":
     full_postprocess = args.postprocess
     fraction_obstruction = args.fraction_obstruction
     phi_in = args.volume_fraction
-    global_path = "/scratch/bilotto/simulations_obstruction_stl/shearing/"
-    #global_path = "/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/"
+    #global_path = "/scratch/bilotto/simulations_obstruction_stl/shearing/"
+    global_path = "/home/jacopo/Documents/PhD_research/Liggghts_simulations/cluster_simulations/"
+    global_path = "/home/jacopo/Documents/PhD_research/Liggghts_simulations/test_simulations/shearing_stl/"
 
-    num_processes = 16
+    num_processes = 4
 
     if full_postprocess == True:
 
@@ -79,7 +65,6 @@ if __name__ == "__main__":
         data_read_vtk.get_initial_velocities()
         particles_volume = data_read_vtk.get_particles_volume()
         mass = particles_volume*700
-        print("mass:", mass)
         data_read_vtk.get_box_dimensions()
         
         data_read_csv = ReaderCsv(cof, ap, muw=muw, vwall=vwall, fraction = fraction_obstruction, phi = phi_in)
@@ -89,6 +74,10 @@ if __name__ == "__main__":
         n_sim = data_read_vtk.n_sim
         box_volume = data_read_vtk.box_x*data_read_vtk.box_y*data_read_vtk.box_z
         global_phi = particles_volume/box_volume
+
+        #average from initial shear of around 100
+        initial_step = 100
+
         #intialize the dump reader
 
     #     data_dump = ReaderDump(cof, ap, simulation_type, param)
@@ -105,7 +94,7 @@ if __name__ == "__main__":
             # Apply asynchronously the function to each argument
             results = [pool.apply_async(to_process_vtk.process_single_step,
                                          (step, nx_divisions, ny_divisions, dx, dy))
-                        for step in range(to_process_vtk.n_sim)]
+                        for step in range(initial_step, to_process_vtk.n_sim)]
             
             # Wait for all processes to finish
             pool.close()
@@ -142,53 +131,57 @@ if __name__ == "__main__":
                 averages[key] += step_data[key]  # Add values to cumulative sum
                 
        # Compute averages
-        averages = {key: value / n_sim for key, value in averages.items()}
+        averages = {key: value / (n_sim-initial_step) for key, value in averages.items()}
 
         # find max and min values of the quantities
         max_values = {key: np.max([step_data[key] for step_data in results_vtk]) for key in averages.keys()}
         min_values = {key: np.min([step_data[key] for step_data in results_vtk]) for key in averages.keys()}
 
-        # compute the mean square deviation
-        msd = compute_eulerian_msd(results_vtk, averages, n_sim)
 
         # compute divergence and curl of velocity field
         math_operations = MathOperationsGrid(nx_divisions, ny_divisions, dx, dy)
         div_v = math_operations.compute_divergence(averages['v'][:, :, 0], averages['v'][:, :, 1])
         pressure = -(averages['stress'][:,:,0]+averages['stress'][:,:,1] + averages['stress'][:,:,2])/3
+        # compute the mean square deviation
+        rmsd = math_operations.compute_eulerian_rmsd(results_vtk, averages, n_sim-initial_step)
 
     plotter = DataPlotter(ap, cof, muw = muw, vwall =vwall, fraction=fraction_obstruction, phi = phi_in)
-    plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['v'], quantity='Velocity', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    
-    plotter.plot_space_averages_all_cells(msd['v'], quantity='MSD_VEL', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(msd['v'], quantity='MSD_VEL', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(msd['v'], quantity='MSD_VEL', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(msd['F'], quantity='MSD_F', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.set_box_dimensions(data_read_vtk.box_x, data_read_vtk.box_y, fraction_obstruction)
+    plotter.plot_space_averages_all_cells(averages['v']/vwall, quantity='V_x/V_{wall}', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=0, symbol = '[N]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['v']/vwall, quantity='$V_y/V_{wall}$', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=1, symbol = '[N]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['v']/vwall, quantity='$V_z/V_{wall}$', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['F'], quantity='Force', component=2, symbol = '[N]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
 
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{xx}$', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{yy}$', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{zz}$', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{xy}$', component=3, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{xz}$', component=4, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{yz}$', component=5, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['stress']/box_volume, quantity='Stress $\sigma_{yz}$', component=5, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(pressure/box_volume, quantity='Pressure', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(rmsd['v']/vwall, quantity='$\sqrt{<(V_x-<V_x>)^2>}/V_{wall}$', component=0, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(rmsd['v']/vwall, quantity='$\sqrt{<(V_y-<V_y>)^2>}/V_{wall}$', component=1, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(rmsd['v']/vwall, quantity='$\sqrt{<(V_y-<V_y>)^2>}/V_{wall}$', component=2, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(rmsd['F'], quantity='$\sqrt{<(F_x-<F_x>)^2>}$', component=0, symbol='[N]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
 
+    cell_volume = box_volume/(nx_divisions*ny_divisions)
+    # using cell volume we obtain more accurate values for stresses and strains
 
-    plotter.plot_space_averages_all_cells(div_v, quantity='Div $\\nabla \cdot u$', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{xx}$', component=0, symbol= '[Pa]' , nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{yy}$', component=1, symbol= '[Pa]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{zz}$', component=2, symbol= '[Pa]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{xy}$', component=3, symbol= '[Pa]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{xz}$', component=4, symbol= '[Pa]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{yz}$', component=5, symbol= '[Pa]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['stress']/cell_volume, quantity='Stress $\sigma_{yz}$', component=5, symbol= '[Pa]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(pressure/cell_volume, quantity='Pressure', component=None, symbol= '[Pa]',  nx_divisions=nx_divisions, ny_divisions=ny_divisions)
 
-    plotter.plot_space_averages_all_cells(averages['phi'], quantity='Volume fraction', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['theta_x'], quantity='Theta_x', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
-    plotter.plot_space_averages_all_cells(averages['theta_z'], quantity='Thetat_z', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(div_v, quantity='Div $\\nabla \cdot u$', component=None, symbol = '[1/s]', nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+
+    plotter.plot_space_averages_all_cells(averages['phi'], quantity='$\phi$', component=None, nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['theta_x'], quantity='$\\theta_x$', component=None, symbol='[$\circ$]' , nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+    plotter.plot_space_averages_all_cells(averages['theta_z'], quantity='$\\theta_z$', component=None, symbol='[$\circ$]' ,nx_divisions=nx_divisions, ny_divisions=ny_divisions)
+
     averages['v_shearing'] = data_read_vtk.v_shearing
     
     print(averages.keys())
 
     # export the data with pickle for further analysis with appropriate name
     data_export = DataExporter(ap, cof, muw=muw, vwall=vwall, fraction = fraction_obstruction, phi= phi_in)
-    data_export.export_with_pickle_obstructed(averages, msd)
+    data_export.export_with_pickle_obstructed(averages, rmsd)
 

@@ -12,6 +12,11 @@ class DataPlotter:
         self.vwall = vwall
         self.fraction = fraction
         self.phi = phi
+
+    def set_box_dimensions(self, box_x, box_y, frac):
+        self.box_x = box_x
+        self.box_y = box_y
+        self.h = box_y/frac
     
     def plot_data(self, data_vtk, data_dump, volume, surface):
         strain = np.arange(1, data_vtk['theta_x'].shape[0]+1)*20/data_vtk['theta_x'].shape[0]
@@ -149,7 +154,7 @@ class DataPlotter:
         # Set axis equal
         ax.set_box_aspect([np.ptp(coord) for coord in [x, y, z]])
 
-    def plot_space_averages_all_cells(self, value, quantity= 'Velocity', component = None, nx_divisions = 40, ny_divisions=6):
+    def plot_space_averages_all_cells(self, value, quantity= 'Velocity', component = None, symbol = '', nx_divisions = 40, ny_divisions=6):
             """
             Function to plot the space averages of the velocities in eulerian cells
             """
@@ -163,9 +168,9 @@ class DataPlotter:
             elif component == 3:
                 axis_name = 'xy'
             elif component == 4:
-                axis_name = 'yz'    
+                axis_name = 'xz'    
             elif component == 5:
-                axis_name = 'xz'
+                axis_name = 'yz'
 
 
             directory_name = (f"eulerian_ap_{self.ap}_mup_{self.cof}_muw_{self.muw}_"
@@ -175,24 +180,32 @@ class DataPlotter:
             os.makedirs(directory_name, exist_ok=True)
             os.chdir(directory_name)
 
-            # Plot x component of the velocity
-            plt.figure(figsize=(20, 12))      
-            plt.xlabel('Grid cell x')
-            plt.ylabel('Grid cell y')
-            #plt.show()
+            plt.figure(figsize=(20, 12))
+            plt.xlabel('x/h', fontsize=18)
+            plt.ylabel('y/H', fontsize=18)
+
             if component is None:
-                plt.imshow(value.T, cmap='plasma', origin='lower', extent=[0, nx_divisions, 0, ny_divisions])
-                plt.colorbar(label='$'+ quantity[0] + '$')  # Set ticks for colorbar
-                plt.title('Eulerian ' + quantity)
-                plt.savefig("eulerian_" + "frac_" + str(self.fraction) + "_" + quantity + ".png")
-            
+                plt.imshow(value.T, cmap='plasma', origin='lower', extent=[0, nx_divisions, 0, ny_divisions])            
             else:
                 plt.imshow(value[:,:,component].T, cmap='plasma', origin='lower', extent=[0, nx_divisions, 0, ny_divisions])
-                plt.colorbar(label='$'+ quantity[0]+ '_' + axis_name + '$')  # Set ticks for colorbar
-                plt.title('Eulerian ' + axis_name+ ' ' + quantity)
-                plt.savefig("eulerian_" + "frac_" + str(self.fraction) + "_" + quantity + "_" + axis_name + ".png")
-            
-                        # save figure to create gif later include the name of the timestep
+
+            cbar = plt.colorbar(label=symbol, orientation='horizontal')
+            cbar.set_label(label=symbol, fontsize=18)  # Set the label and increase the font size
+            cbar.ax.tick_params(labelsize=18)  # Adjust the font size of the color bar tick labels
+
+            plt.title(quantity, fontsize=20)
+            #plt.xticks(np.linspace(0, nx_divisions, num=20), np.linspace(-self.box_x/2/self.h, self.box_x/2/self.h, num=20), fontsize=14)
+            # Generating tick positions
+            tick_positions = np.linspace(0, nx_divisions, num=15)
+
+            # Generating tick labels and formatting them to display only the first couple of digits
+            tick_labels = np.linspace(-self.box_x/2/self.h, self.box_x/2/self.h, num=15)
+            formatted_tick_labels = [f"{label:.2f}" for label in tick_labels]
+
+            # Setting the ticks with the formatted labels
+            plt.xticks(tick_positions, formatted_tick_labels, fontsize=14)
+            plt.yticks(np.linspace(0, ny_divisions, num=5), np.linspace(0, 1, num=5), fontsize=14)
+            plt.savefig("eulerian_" + quantity.replace("/", "_") + ".png")            
             plt.close()
             os.chdir("..")
 
